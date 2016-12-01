@@ -1,0 +1,42 @@
+{
+	"name": "freesurfer-recon-all",
+	"label": "Freesurfer v5.3.0: Recon-All",
+	"description": " This gear takes an anatomical NIfTI file and performs all of the FreeSurfer cortical reconstruction process. Outputs are provided in a zip file and include the entire output directory tree from Recon-All. Configuration options exist for setting the subejct ID and for converting outputs to NIfTI, OBJ, and CSV. FreeSurfer is a software package for the analysis and visualization of structural and functional neuroimaging data from cross-sectional or longitudinal studies. It is developed by the Laboratory for Computational Neuroimaging at the Athinoula A. Martinos Center for Biomedical Imaging. Please see https://surfer.nmr.mgh.harvard.edu/fswiki/FreeSurferSoftwareLicense for license information.",
+	"maintainer": "Michael Perry <lmperry@stanford.edu>",
+	"author": "FREESURFER <freesurfer@nmr.mgh.harvard.edu>",
+	"url": "https://surfer.nmr.mgh.harvard.edu",
+	"source": "https://github.com/scitran-apps/freesurfer-recon-all",
+	"license": "GPL-2.0",
+	"flywheel": "0",
+	"version": "0.0.1",
+	"inputs": {
+		"anatomical": {
+			"base": "file",
+			"type": {
+                "enum": [ "nifti" ]
+                }
+		}
+	},
+	"config": {
+		"subject_id": {
+				"description": "Desired subject ID. This will be used to name the resulting freesurfer output directory.",
+				"default": "s000",
+				"type": "string"
+			},
+		"convert_surfaces": {
+				"description": "Convert selected FreeSurfer surface files to OBJ format. (Default=1, true)",
+				"default": 1,
+				"type": "integer"
+			},
+		"convert_volumes": {
+				"description": "Convert selected FreeSurfer volume files (mgz) to NIfTI format. (Default=1, true)",
+				"default": 1,
+				"type": "integer"
+			},
+		"convert_aseg_stats": {
+				"description": "Convert FreeSurfer aseg.stats file to CSV. (Default=1, true)",
+				"default": 1,
+				"type": "integer"
+			}
+	}
+}

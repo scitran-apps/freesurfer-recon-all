@@ -1,0 +1,169 @@
+#! /bin/bash
+#
+# Run freesurfer-recon-all Gear
+# Built to flywheel-v0 spec.
+#
+
+#TODO - license file build on the fly from parameter input
+# https://surfer.nmr.mgh.harvard.edu/fswiki/ReconAllOutputFiles
+
+GEAR=freesurfer-recon-all
+REPO=scitran
+CONTAINER="[${REPO}/$GEAR]"
+
+echo -e "$CONTAINER  Initiated"
+set -e
+
+###############################################################################
+# Configure Freesurfer ENV
+
+export OS Linux=
+export FS_OVERRIDE=0
+export FIX_VERTEX_AREA=
+export FSF_OUTPUT_FORMAT=nii.gz
+export MNI_DIR=/opt/freesurfer/mni
+export LOCAL_DIR=/opt/freesurfer/local
+export FREESURFER_HOME=/opt/freesurfer
+export FSFAST_HOME=/opt/freesurfer/fsfast
+export MINC_BIN_DIR=/opt/freesurfer/mni/bin
+export MINC_LIB_DIR=/opt/freesurfer/mni/lib
+export MNI_DATAPATH=/opt/freesurfer/mni/data
+export FMRI_ANALYSIS_DIR=/opt/freesurfer/fsfast
+export PERL5LIB=/opt/freesurfer/mni/lib/perl5/5.8.5
+export MNI_PERL5LIB=/opt/freesurfer/mni/lib/perl5/5.8.5
+export PATH=/opt/freesurfer/bin:/opt/freesurfer/fsfast/bin:/opt/freesurfer/tktools:/opt/freesurfer/mni/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# Configure bashrc to source FreeSurferEnv.sh
+/bin/bash -c 'source $FREESURFER_HOME/FreeSurferEnv.sh &>/dev/null'
+
+export SUBJECTS_DIR=/opt/freesurfer/subjects
+
+###############################################################################
+# Configure paths
+
+FLYWHEEL_BASE=/flywheel/v0
+OUTPUT_DIR=$FLYWHEEL_BASE/output
+INPUT_DIR=$FLYWHEEL_BASE/input
+ANAT_DIR=$INPUT_DIR/anatomical # Must match input from the manifest
+CONFIG_FILE=${FLYWHEEL_BASE}/config.json
+LOG_FILE=$OUTPUT_DIR/freesurfer-recon-all_log.txt
+
+SUBJECT_ID=`${FLYWHEEL_BASE}/parse_config.py -i`
+RECON_ALL_OPTS=`${FLYWHEEL_BASE}/parse_config.py -o`
+CONVERT_SURFACES=`${FLYWHEEL_BASE}/parse_config.py -s`
+CONVERT_VOLUMES=`${FLYWHEEL_BASE}/parse_config.py -n`
+ASEG_CSV=`${FLYWHEEL_BASE}/parse_config.py -a`
+
+# Make and link the directory
+WORK_DIR=/${SUBJECT_ID}
+ln -s ${SUBJECTS_DIR}/${SUBJECT_ID} ${WORK_DIR}
+
+ANATOMICAL=`find ${ANAT_DIR}/* -name "*.nii*"`
+
+###############################################################################
+# Freesurfer
+
+# Run recon-all
+time recon-all -i ${ANATOMICAL} -subjid ${SUBJECT_ID} ${RECON_ALL_OPTS} -all -qcache 2>&1 | tee $LOG_FILE
+
+# Invert the right hemisphere
+time xhemireg --s ${SUBJECT_ID} 2>&1 | tee -a $LOG_FILE
+
+# Register the left hemisphere to fsaverage_sym
+time surfreg --s ${SUBJECT_ID} --t fsaverage_sym --lh 2>&1 | tee -a $LOG_FILE
+
+# Register the inverted right hemisphere to fsaverage_sym
+time surfreg --s ${SUBJECT_ID} --t fsaverage_sym --lh --xhemi 2>&1 | tee -a $LOG_FILE
+
+
+###############################################################################
+# Convert the output surface and volume files
+if [ ! -z $CONVERT_SURFACES ]; then
+
+    # Convert selected surfaces in subject/surf to obj in output
+    SURF_DIR=${SUBJECTS_DIR}/${SUBJECT_ID}/surf
+
+    surfaces='lh.pial
+              rh.pial
+              lh.white
+              rh.white
+              rh.inflated
+              lh.inflated'
+
+    echo 'Converting surfaces to object files...' 2>&1 | tee -a $LOG_FILE
+    for i in $surfaces; do
+        mris_convert ${SURF_DIR}/$i ${SURF_DIR}/$i.asc
+        ${FLYWHEEL_BASE}/srf2obj ${SURF_DIR}/$i.asc > ${OUTPUT_DIR}/$i.obj
+    done
+
+fi
+
+# Convert select volumes in subject/mri to nifti:
+if [ ! -z $CONVERT_VOLUMES ]; then
+
+    MRI_DIR=${SUBJECTS_DIR}/${SUBJECT_ID}/mri
+    mri_mgz_files='aparc+aseg.mgz
+                   aparc.a2009s+aseg.mgz
+                   brainmask.mgz
+                   lh.ribbon.mgz
+                   rh.ribbon.mgz
+                   ribbon.mgz
+                   aseg.mgz
+                   orig.mgz
+                   T1.mgz'
+
+    echo 'Converting volumes to nifti files...' 2>&1 | tee -a $LOG_FILE
+    for i in $mri_mgz_files; do
+      mri_convert -i ${MRI_DIR}/$i -o ${OUTPUT_DIR}/`basename $i .mgz`.nii.gz 2>&1 | tee -a $LOG_FILE
+    done
+
+fi
+
+###############################################################################
+# Write aseg stats to a table
+
+if [ ! -z $ASEG_CSV ]; then
+    asegstats2table -i ${SUBJECTS_DIR}/${SUBJECT_ID}/stats/aseg.stats --delimiter comma --tablefile ${OUTPUT_DIR}/aseg_stats_vol_mm3.csv
+
+    ## Loop over all stats files and convert to csv (NYI)
+    #for f in `find ${SUBJECTS_DIR}/${SUBJECT_ID}/stats/ -name "*.stats"`; do
+    #    asegstats2table -i ${f} --delimiter comma --tablefile ${OUTPUT_DIR}/`basename ${f}`.csv
+    #done
+fi
+
+###############################################################################
+# Compress Recon-all output directory
+
+echo "Compressing outputs..."
+
+# Set file permissions prior to compression
+chmod -R 777 ${WORK_DIR}
+cd /
+zip -r /${OUTPUT_DIR}/${GEAR}_${SUBJECT_ID}`date +"_D%m-%d-%yT%H-%M"`.zip ${SUBJECT_ID}
+
+
+###############################################################################
+# FINISH
+
+# Get a list of the files in the output directory
+outputs=$(find $OUTPUT_DIR/* -maxdepth 0 -type f)
+
+# If outputs exist, generate metadata, and exit
+if [[ -z $outputs ]]
+then
+  echo "$CONTAINER  FAILED: No results found in output directory... Exiting"
+  exit 1
+else
+
+  # Create metadata json file ($OUTPUT_DIR/.metadata.json)
+  $FLYWHEEL_BASE/metadata_create.py $OUTPUT_DIR $CONTAINER
+
+  # Set permissions for outputs (prevent root only r/w)
+  chmod -R 777 $OUTPUT_DIR
+
+  # End
+  echo -e "$CONTAINER  `cat ${OUTPUT_DIR}/.metadata.json`"
+  echo -e "$CONTAINER  Done!"
+fi
+
+exit 0

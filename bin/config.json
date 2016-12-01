@@ -1,0 +1,8 @@
+{
+      "config": {
+        "subject_id": "s000",
+        "convert_surfaces": 1,
+        "convert_volumes": 1,
+        "convert_aseg_stats": 1
+    }
+}
