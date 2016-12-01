@@ -1,6 +1,6 @@
-# freesurfer-recon-all## scitran/freesurfer-recon-all
+## scitran/freesurfer-recon-all
 
-This dockerfile will create a Gear built to the Flywheel v0 spec with Freesurfer (v5.3.0) that executes ```recon-all```.
+This build context will create a Gear built to the Flywheel v0 spec with Freesurfer (v5.3.0) that executes ```recon-all```.
 
 * You MUST read and agree to the license agreement and [register with MGH before you use the software](https://surfer.nmr.mgh.harvard.edu/registration.html).
 * Once you get your license please CREATE A LICENCE FILE AND SAVE IT TO THIS BUILD CONTEXT. The build will fail otherwise.
