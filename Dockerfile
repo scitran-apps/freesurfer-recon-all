@@ -18,6 +18,7 @@ MAINTAINER Michael Perry <lmperry@stanford.edu>
 RUN apt-get update && apt-get -y install \
         bc \
         tar \
+        zip \
         wget \
         gawk \
         tcsh \
