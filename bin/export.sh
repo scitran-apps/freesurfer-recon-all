@@ -3,7 +3,7 @@
 # The container can be exported once it's started with
 repo=scitran
 gear=freesurfer-recon-all
-version=0.0.1
+version=0.0.2
 outname=$gear-$version.tar
 container=$gear
 image=$repo/$gear

@@ -9,17 +9,25 @@
 #
 
 # Start with the Freesurfer container
-FROM vistalab/freesurfer
+FROM ubuntu:trusty
 
-# Note the Maintainer.
+# Note the Maintainer
 MAINTAINER Michael Perry <lmperry@stanford.edu>
 
-# Install system dependencies
-RUN apt-get -y update && apt-get -y install \
-      python \
-      python2.7 \
-      zip \
-      gawk
+# Install dependencies for FreeSurfer
+RUN apt-get update && apt-get -y install \
+        bc \
+        tar \
+        wget \
+        gawk \
+        tcsh \
+        python \
+        libgomp1 \
+        python2.7 \
+        perl-modules
+
+# Download FS_v5.3.0 from MGH and untar to /opt
+RUN wget -N -qO- ftp://surfer.nmr.mgh.harvard.edu/pub/dist/freesurfer/5.3.0/freesurfer-Linux-centos4_x86_64-stable-pub-v5.3.0.tar.gz | tar -xzv -C /opt
 
 # FREESURFER Licsense (Must have this file to build)
 COPY license /opt/freesurfer/.license
