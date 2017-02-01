@@ -5,7 +5,7 @@ This build context will create a Gear built to the Flywheel v0 spec with Freesur
 * You MUST read and agree to the license agreement and [register with MGH before you use the software](https://surfer.nmr.mgh.harvard.edu/registration.html).
 * Once you get your license please CREATE A LICENCE FILE AND SAVE IT TO THIS BUILD CONTEXT. The build will fail otherwise.
 * You can also change ```build.sh``` to edit the tag for the image (default=scitran/freesurfer-recon-all).
-* The resulting image is ~8GB
+* The resulting image is ~8GB and builds in 15min.
 
 
 ### Entrypoint ###
