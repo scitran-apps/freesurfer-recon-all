@@ -3,8 +3,6 @@
 # Run freesurfer-recon-all Gear
 # Built to flywheel-v0 spec.
 #
-
-#TODO - license file build on the fly from parameter input
 # https://surfer.nmr.mgh.harvard.edu/fswiki/ReconAllOutputFiles
 
 GEAR=freesurfer-recon-all
