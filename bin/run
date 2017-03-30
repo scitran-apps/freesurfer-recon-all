@@ -55,7 +55,7 @@ LOG_FILE=/flywheel/v0/output/$GEAR.log
   ASEG_CSV=`${FLYWHEEL_BASE}/parse_config.py -a`
 
   # If the license file is empty then create from config inputs
-  if [[ -z $(cat ${LICENSE_FILE}) ]]; then
+  if [[ ! -f ${LICENSE_FILE} ]]; then
     LICENSE=$(${FLYWHEEL_BASE}/parse_config.py -l)
     echo -e ${LICENSE} > ${LICENSE_FILE}
   fi
@@ -65,6 +65,11 @@ LOG_FILE=/flywheel/v0/output/$GEAR.log
   ln -s ${SUBJECTS_DIR}/${SUBJECT_ID} ${WORK_DIR}
 
   ANATOMICAL=`find ${ANAT_DIR}/* -name "*.nii*"`
+
+  if [[ -z $ANATOMICAL ]]; then
+    echo "$CONTAINER  Anatomical Image could not be found in $ANAT_DIR! Exiting (1)"
+    exit 1
+  fi
 
   ###############################################################################
   # Freesurfer
@@ -84,7 +89,7 @@ LOG_FILE=/flywheel/v0/output/$GEAR.log
 
   ###############################################################################
   # Convert the output surface and volume files
-  if [ ! -z $CONVERT_SURFACES ]; then
+  if [[ $CONVERT_SURFACES == "true" ]]; then
 
       # Convert selected surfaces in subject/surf to obj in output
       SURF_DIR=${SUBJECTS_DIR}/${SUBJECT_ID}/surf
@@ -105,7 +110,7 @@ LOG_FILE=/flywheel/v0/output/$GEAR.log
   fi
 
   # Convert select volumes in subject/mri to nifti:
-  if [ ! -z $CONVERT_VOLUMES ]; then
+  if [[ $CONVERT_VOLUMES == "true" ]]; then
 
       MRI_DIR=${SUBJECTS_DIR}/${SUBJECT_ID}/mri
       mri_mgz_files='aparc+aseg.mgz
@@ -128,7 +133,7 @@ LOG_FILE=/flywheel/v0/output/$GEAR.log
   ###############################################################################
   # Write aseg stats to a table
 
-  if [ ! -z $ASEG_CSV ]; then
+  if [[ $ASEG_CSV == "true" ]]; then
       asegstats2table -i ${SUBJECTS_DIR}/${SUBJECT_ID}/stats/aseg.stats --delimiter comma --tablefile ${OUTPUT_DIR}/aseg_stats_vol_mm3.csv
 
       # Loop over all stats files and convert to csv (NYI)

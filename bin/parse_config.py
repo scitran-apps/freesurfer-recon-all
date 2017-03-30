@@ -10,9 +10,12 @@ def parse_config(args):
 
     # If the config file does not exist then use the default
     if not os.path.isfile(args.json_file):
-        print "No config.json file found. Loading defaults from manifest..."
-        args.json_file = '/flywheel/v0/manifest.json';
+        args.json_file = '/flywheel/v0/manifest.json'
+
+    if args.json_file.endswith('manifest.json'):
         manifest=True
+    else:
+        manifest=False
 
     # Read the config json file
     with open(args.json_file, 'r') as jsonfile:
@@ -20,10 +23,11 @@ def parse_config(args):
 
     # Load defaults from manifest
     if manifest:
-        default_config = config
+        default_config = config['config']
         config = {}
+        config['config'] = {}
         for k in default_config.iterkeys():
-            config[k] = default_config[k]['default']
+            config['config'][k] = default_config[k]['default']
 
     if args.i:
         print config['config']['subject_id']
@@ -55,7 +59,7 @@ def parse_config(args):
 
     # Parse config for license elements
     if args.l:
-        if config['config']['license_key'][0] == "*":
+        if config['config']['license_key'] and config['config']['license_key'][0] == "*":
             license_key = config['config']['license_key']
         else:
             license_key = "*" + config['config']['license_key']
