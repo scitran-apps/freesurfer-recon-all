@@ -8,10 +8,7 @@
 #   docker run -v /path/to/your/subject:/input scitran/freesurfer-recon-all
 #
 
-# Start with the Freesurfer container
 FROM ubuntu:trusty
-
-# Note the Maintainer
 MAINTAINER Michael Perry <lmperry@stanford.edu>
 
 # Install dependencies for FreeSurfer
@@ -28,7 +25,12 @@ RUN apt-get update && apt-get -y install \
         perl-modules
 
 # Download Freesurfer v6.0.0 from MGH and untar to /opt
-RUN wget -N -qO- ftp://surfer.nmr.mgh.harvard.edu/pub/dist/freesurfer/6.0.0/freesurfer-Linux-centos6_x86_64-stable-pub-v6.0.0.tar.gz | tar -xzv -C /opt
+RUN wget -N -qO- ftp://surfer.nmr.mgh.harvard.edu/pub/dist/freesurfer/6.0.0/freesurfer-Linux-centos6_x86_64-stable-pub-v6.0.0.tar.gz | tar -xz -C /opt
+
+# The brainstem and hippocampal subfield modules in FreeSurfer 6.0 require the Matlab R2012 runtime
+RUN apt-get install libxt-dev libxmu-dev
+ENV FREESURFER_HOME /opt/freesurfer
+RUN wget -N -qO- "http://surfer.nmr.mgh.harvard.edu/fswiki/MatlabRuntime?action=AttachFile&do=get&target=runtime2012bLinux.tar.gz" | tar -xz -C $FREESURFER_HOME
 
 # Make directory for flywheel spec (v0)
 ENV FLYWHEEL /flywheel/v0

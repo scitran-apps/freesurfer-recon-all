@@ -15,9 +15,9 @@ LOG_FILE=/flywheel/v0/output/$GEAR.log
   set -e
 
   ###############################################################################
-  # Configure Freesurfer ENV
+  # Configure Freesurfer and MCR ENV
 
-  export OS Linux=
+  export OS=Linux
   export FS_OVERRIDE=0
   export FIX_VERTEX_AREA=
   export FSF_OUTPUT_FORMAT=nii.gz
@@ -31,9 +31,12 @@ LOG_FILE=/flywheel/v0/output/$GEAR.log
   export FMRI_ANALYSIS_DIR=/opt/freesurfer/fsfast
   export PERL5LIB=/opt/freesurfer/mni/lib/perl5/5.8.5
   export MNI_PERL5LIB=/opt/freesurfer/mni/lib/perl5/5.8.5
+  export XAPPLRESDIR=/opt/freesurfer/MCRv80/X11/app-defaults
   export PATH=/opt/freesurfer/bin:/opt/freesurfer/fsfast/bin:/opt/freesurfer/tktools:/opt/freesurfer/mni/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+  export LD_LIBRARY_PATH=/opt/freesurfer/MCRv80/runtime/glnxa64:/opt/freesurfer/MCRv80/bin/glnxa64:/opt/freesurfer/MCRv80/sys/os/glnxa64:/opt/freesurfer/MCRv80/sys/java/jre/glnxa64/jre/lib/amd64/native_threads:/opt/freesurfer/MCRv80/sys/java/jre/glnxa64/jre/lib/amd64/server:/opt/freesurfer/MCRv80/sys/java/jre/glnxa64/jre/lib/amd64
 
-  # Source FreeSurferEnv.sh
+
+  # Source FreeSurferEnv.sh then set subjects_dir
   /bin/bash -c 'source $FREESURFER_HOME/FreeSurferEnv.sh &>/dev/null'
 
   export SUBJECTS_DIR=/opt/freesurfer/subjects
@@ -53,6 +56,9 @@ LOG_FILE=/flywheel/v0/output/$GEAR.log
   CONVERT_SURFACES=`${FLYWHEEL_BASE}/parse_config.py -s`
   CONVERT_VOLUMES=`${FLYWHEEL_BASE}/parse_config.py -n`
   ASEG_CSV=`${FLYWHEEL_BASE}/parse_config.py -a`
+  HIPPOCAMPUS=`${FLYWHEEL_BASE}/parse_config.py -c`
+  BRAINSTEM=`${FLYWHEEL_BASE}/parse_config.py -b`
+  REGISTER_SURFACES=`${FLYWHEEL_BASE}/parse_config.py -r`
 
   # If the license file is empty then create from config inputs
   if [[ ! -f ${LICENSE_FILE} ]]; then
@@ -60,9 +66,9 @@ LOG_FILE=/flywheel/v0/output/$GEAR.log
     echo -e ${LICENSE} > ${LICENSE_FILE}
   fi
 
-  # Make and link the directory
-  WORK_DIR=/${SUBJECT_ID}
-  ln -s ${SUBJECTS_DIR}/${SUBJECT_ID} ${WORK_DIR}
+  # Make and link the subject's directory
+  WORK_DIR=/"${SUBJECT_ID}"
+  ln -s ${SUBJECTS_DIR}/"${SUBJECT_ID}" ${WORK_DIR}
 
   ANATOMICAL=`find ${ANAT_DIR}/* -name "*.nii*"`
 
@@ -75,58 +81,97 @@ LOG_FILE=/flywheel/v0/output/$GEAR.log
   # Freesurfer
 
   # Run recon-all
-  time recon-all -i ${ANATOMICAL} -subjid ${SUBJECT_ID} ${RECON_ALL_OPTS} -all -qcache
+  recon-all -i "${ANATOMICAL}" -subjid "${SUBJECT_ID}" ${RECON_ALL_OPTS}
 
-  # Invert the right hemisphere
-  time xhemireg --s ${SUBJECT_ID}
+  if [[ $? != 0 ]]; then
+    echo "$CONTAINER  recon-all failure! Check logs. Exiting (1)"
+    exit 1
+  fi
 
-  # Register the left hemisphere to fsaverage_sym
-  time surfreg --s ${SUBJECT_ID} --t fsaverage_sym --lh
+  ###############################################################################
+  # Optional Segmentations
 
-  # Register the inverted right hemisphere to fsaverage_sym
-  time surfreg --s ${SUBJECT_ID} --t fsaverage_sym --lh --xhemi
+  MRI_DIR=${SUBJECTS_DIR}/"${SUBJECT_ID}"/mri
+
+  # Segmentation of hippocampal subfields
+  if [[ ${HIPPOCAMPUS} == 'true' ]]; then
+    recon-all -subjid "${SUBJECT_ID}" -hippocampal-subfields-T1
+    quantifyHippocampalSubfields.sh T1 "${MRI_DIR}"/HippocampalSubfields.txt
+    tr ' ' ',' <"${MRI_DIR}"/HippocampalSubfields.txt >${OUTPUT_DIR}/"${SUBJECT_ID}"_HippocampalSubfields.csv
+  fi
+
+  # Brainstem Substructures
+  if [[ ${BRAINSTEM} == 'true' ]]; then
+    recon-all -subjid "${SUBJECT_ID}" -brainstem-structures
+    quantifyBrainstemStructures.sh "${MRI_DIR}"/BrainstemStructures.txt
+    tr ' ' ',' <"${MRI_DIR}"/BrainstemStructures.txt >${OUTPUT_DIR}/"${SUBJECT_ID}"_BrainstemStructures.csv
+  fi
+
+  ###############################################################################
+  # Optional registrations
+
+  if [[ $REGISTER_SURFACES == "true" ]]; then
+    # Register hemispheres
+    xhemireg --s "${SUBJECT_ID}"
+
+    # Register the left hemisphere to fsaverage_sym
+    surfreg --s "${SUBJECT_ID}" --t fsaverage_sym --lh
+
+    # Register the inverted right hemisphere to fsaverage_sym
+    surfreg --s "${SUBJECT_ID}" --t fsaverage_sym --lh --xhemi
+  fi
 
 
   ###############################################################################
   # Convert the output surface and volume files
   if [[ $CONVERT_SURFACES == "true" ]]; then
 
-      # Convert selected surfaces in subject/surf to obj in output
-      SURF_DIR=${SUBJECTS_DIR}/${SUBJECT_ID}/surf
+    # Convert selected surfaces in subject/surf to obj in output
+    SURF_DIR=${SUBJECTS_DIR}/"${SUBJECT_ID}"/surf
 
-      surfaces='lh.pial
-                rh.pial
-                lh.white
-                rh.white
-                rh.inflated
-                lh.inflated'
+    surfaces='lh.pial
+              rh.pial
+              lh.white
+              rh.white
+              rh.inflated
+              lh.inflated'
 
-      echo 'Converting surfaces to object files...'
-      for i in $surfaces; do
-          mris_convert ${SURF_DIR}/$i ${SURF_DIR}/$i.asc
-          ${FLYWHEEL_BASE}/srf2obj ${SURF_DIR}/$i.asc > ${OUTPUT_DIR}/$i.obj
-      done
+    echo 'Converting surfaces to object files...'
+    for i in $surfaces; do
+        mris_convert "${SURF_DIR}"/$i "${SURF_DIR}"/$i.asc
+        ${FLYWHEEL_BASE}/srf2obj "${SURF_DIR}"/$i.asc > ${OUTPUT_DIR}/$i.obj
+    done
 
   fi
 
   # Convert select volumes in subject/mri to nifti:
   if [[ $CONVERT_VOLUMES == "true" ]]; then
 
-      MRI_DIR=${SUBJECTS_DIR}/${SUBJECT_ID}/mri
-      mri_mgz_files='aparc+aseg.mgz
-                     aparc.a2009s+aseg.mgz
-                     brainmask.mgz
-                     lh.ribbon.mgz
-                     rh.ribbon.mgz
-                     ribbon.mgz
-                     aseg.mgz
-                     orig.mgz
-                     T1.mgz'
+    MRI_DIR=${SUBJECTS_DIR}/"${SUBJECT_ID}"/mri
+    mri_mgz_files='aparc+aseg.mgz
+                   aparc.a2009s+aseg.mgz
+                   brainmask.mgz
+                   lh.ribbon.mgz
+                   rh.ribbon.mgz
+                   ribbon.mgz
+                   aseg.mgz
+                   orig.mgz
+                   T1.mgz'
 
-      echo 'Converting volumes to nifti files...'
-      for i in $mri_mgz_files; do
-        mri_convert -i ${MRI_DIR}/$i -o ${OUTPUT_DIR}/`basename $i .mgz`.nii.gz
-      done
+    if [[ ${HIPPOCAMPUS} == 'true' ]]; then
+      mri_mgz_files="$mri_mgz_files
+                      lh.hippoSfLabels-T1.v10.FSvoxelSpace.mgz
+                      rh.hippoSfLabels-T1.v10.FSvoxelSpace.mgz"
+    fi
+
+    if [[ ${BRAINSTEM} == 'true' ]]; then
+      mri_mgz_files="$mri_mgz_files brainstemSsLabels.v10.FSvoxelSpace.mgz"
+    fi
+
+    echo 'Converting volumes to nifti files...'
+    for i in $mri_mgz_files; do
+      mri_convert -i "${MRI_DIR}"/$i -o ${OUTPUT_DIR}/`basename $i .mgz`.nii.gz
+    done
 
   fi
 
@@ -134,10 +179,10 @@ LOG_FILE=/flywheel/v0/output/$GEAR.log
   # Write aseg stats to a table
 
   if [[ $ASEG_CSV == "true" ]]; then
-      asegstats2table -i ${SUBJECTS_DIR}/${SUBJECT_ID}/stats/aseg.stats --delimiter comma --tablefile ${OUTPUT_DIR}/aseg_stats_vol_mm3.csv
+      asegstats2table -i ${SUBJECTS_DIR}/"${SUBJECT_ID}"/stats/aseg.stats --delimiter comma --tablefile ${OUTPUT_DIR}/aseg_stats_vol_mm3.csv
 
       # Loop over all stats files and convert to csv (NYI)
-      for f in `find ${SUBJECTS_DIR}/${SUBJECT_ID}/stats/ -name "*.stats"`; do
+      for f in `find ${SUBJECTS_DIR}/"${SUBJECT_ID}"/stats/ -name "*.stats"`; do
          asegstats2table -i ${f} --delimiter comma --tablefile ${OUTPUT_DIR}/`basename ${f}`.csv
       done
   fi
@@ -150,7 +195,7 @@ LOG_FILE=/flywheel/v0/output/$GEAR.log
   # Set file permissions prior to compression
   chmod -R 777 ${WORK_DIR}
   cd /
-  zip -r /${OUTPUT_DIR}/${GEAR}_${SUBJECT_ID}`date +"_D%m-%d-%yT%H-%M"`.zip ${SUBJECT_ID}
+  zip -r /${OUTPUT_DIR}/${GEAR}_"${SUBJECT_ID}"`date +"_D%m-%d-%yT%H-%M"`.zip "${SUBJECT_ID}"
 
 
   ###############################################################################
@@ -166,14 +211,10 @@ LOG_FILE=/flywheel/v0/output/$GEAR.log
     exit 1
   else
 
-    # Create metadata json file ($OUTPUT_DIR/.metadata.json)
-    $FLYWHEEL_BASE/metadata_create.py $OUTPUT_DIR $CONTAINER
-
     # Set permissions for outputs (prevent root only r/w)
     chmod -R 777 $OUTPUT_DIR
 
     # End
-    echo -e "$CONTAINER  `cat ${OUTPUT_DIR}/.metadata.json`"
     echo -e "$CONTAINER  Done!"
   fi
 

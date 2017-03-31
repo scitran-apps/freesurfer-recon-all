@@ -32,30 +32,33 @@ def parse_config(args):
     if args.i:
         print config['config']['subject_id']
 
-    # Print options for recon-all (TODO)
+    # Print options for recon-all
     if args.o:
-        print ""
+        print config['config']['reconall_options']
+
+    # Print options for recon-all
+    if args.r:
+        print config['config']['register_surfaces']
 
     # Convert surfaces to obj
     if args.s:
-        if config['config']['convert_surfaces'] == 1:
-            print config['config']['convert_surfaces']
-        else:
-            print ""
+        print config['config']['convert_surfaces']
 
     # Convert mgz to nifti
     if args.n:
-        if config['config']['convert_volumes'] == 1:
-            print config['config']['convert_volumes']
-        else:
-            print ""
+        print config['config']['convert_volumes']
 
     # Convert aseg stats to csv
     if args.a:
-        if config['config']['convert_aseg_stats'] == 1:
-            print config['config']['convert_aseg_stats']
-        else:
-            print ""
+        print config['config']['convert_stats']
+
+    # Process hippocapal subfields
+    if args.a:
+        print config['config']['hippocampal_subfields']
+
+    # Process brainstem
+    if args.a:
+        print config['config']['brainstem_structures']
 
     # Parse config for license elements
     if args.l:
@@ -76,6 +79,9 @@ if __name__ == '__main__':
     ap.add_argument('-n', action='store_true', help='Convert volume MGZ to NIfTI')
     ap.add_argument('-a', action='store_true', help='Convert ASEG stats to csv')
     ap.add_argument('-l', action='store_true', help='Generate License File')
+    ap.add_argument('-c', action='store_true', help='Hippocampal subfields')
+    ap.add_argument('-b', action='store_true', help='Brainstem processing')
+    ap.add_argument('-r', action='store_true', help='Surface registration')
     args = ap.parse_args()
 
     parse_config(args)
