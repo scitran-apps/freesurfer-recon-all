@@ -91,7 +91,7 @@ LOG_FILE=/flywheel/v0/output/$GEAR.log
   # Run Freesurfer-Recon-all
 
   # Run recon-all
-  recon-all -i "${ANATOMICAL}" -subjid "${SUBJECT_ID}" "${RECON_ALL_OPTS}"
+  recon-all -i "${ANATOMICAL}" -subjid "${SUBJECT_ID}" ${RECON_ALL_OPTS}
 
   if [[ $? != 0 ]]; then
     echo "$CONTAINER  recon-all failure! Check logs. Exiting (1)"
