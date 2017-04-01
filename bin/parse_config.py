@@ -1,6 +1,7 @@
 #! /usr/bin/env python2.7
-# Parse config.json and return a string that can be passed to the calling function.
 #
+# Parse config.json and return strings that can be passed back to the calling
+# function.
 #
 
 # Parse config file
@@ -8,9 +9,9 @@ def parse_config(args):
     import json
     import os
 
-    # If the config file does not exist then use the default
+    # If the config file does not exist then exit
     if not os.path.isfile(args.json_file):
-        args.json_file = '/flywheel/v0/manifest.json'
+        raise SystemExit('File does not exist: %s!' % args.json_file)
 
     if args.json_file.endswith('manifest.json'):
         manifest=True
@@ -52,12 +53,12 @@ def parse_config(args):
     if args.a:
         print config['config']['convert_stats']
 
-    # Process hippocapal subfields
-    if args.a:
+    # Process hippocampal subfields
+    if args.c:
         print config['config']['hippocampal_subfields']
 
-    # Process brainstem
-    if args.a:
+    # Process brainstem substructures
+    if args.b:
         print config['config']['brainstem_structures']
 
     # Parse config for license elements
@@ -72,7 +73,7 @@ if __name__ == '__main__':
 
     import argparse
     ap = argparse.ArgumentParser()
-    ap.add_argument('--json_file', type=str, dest="json_file", default='/flywheel/v0/config.json', help='Full path to the input json config file.')
+    ap.add_argument('--json_file', type=str, dest="json_file", help='Full path to the input json config file.')
     ap.add_argument('-i', action='store_true', help='Return subject ID')
     ap.add_argument('-o', action='store_true', help='Return Recon-All Options')
     ap.add_argument('-s', action='store_true', help='Convert surfaces to obj')

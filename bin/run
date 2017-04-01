@@ -48,17 +48,33 @@ LOG_FILE=/flywheel/v0/output/$GEAR.log
   OUTPUT_DIR=$FLYWHEEL_BASE/output
   INPUT_DIR=$FLYWHEEL_BASE/input
   ANAT_DIR=$INPUT_DIR/anatomical # Must match input from the manifest
-  CONFIG_FILE=${FLYWHEEL_BASE}/config.json
   LICENSE_FILE=${FREESURFER_HOME}/.license
+  ANATOMICAL=`find ${ANAT_DIR}/* -name "*.nii*"`
 
-  SUBJECT_ID=`${FLYWHEEL_BASE}/parse_config.py -i`
-  RECON_ALL_OPTS=`${FLYWHEEL_BASE}/parse_config.py -o`
-  CONVERT_SURFACES=`${FLYWHEEL_BASE}/parse_config.py -s`
-  CONVERT_VOLUMES=`${FLYWHEEL_BASE}/parse_config.py -n`
-  ASEG_CSV=`${FLYWHEEL_BASE}/parse_config.py -a`
-  HIPPOCAMPUS=`${FLYWHEEL_BASE}/parse_config.py -c`
-  BRAINSTEM=`${FLYWHEEL_BASE}/parse_config.py -b`
-  REGISTER_SURFACES=`${FLYWHEEL_BASE}/parse_config.py -r`
+  # Check for input file
+  if [[ -z $ANATOMICAL ]]; then
+    echo "$CONTAINER  Anatomical Image could not be found in $ANAT_DIR! Exiting (1)"
+    exit 1
+  fi
+
+  ###############################################################################
+  # Parse Configuration and Set Options 
+
+  CONFIG_FILE=${FLYWHEEL_BASE}/config.json
+  MANIFEST_FILE=${FLYWHEEL_BASE}/manifest.json
+
+  if [[ ! -f ${CONFIG_FILE} ]]; then
+    CONFIG_FILE=${MANIFEST_FILE}
+  fi
+
+  SUBJECT_ID=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -i`
+  RECON_ALL_OPTS=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -o`
+  CONVERT_SURFACES=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -s`
+  CONVERT_VOLUMES=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -n`
+  ASEG_CSV=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -a`
+  HIPPOCAMPUS=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -c`
+  BRAINSTEM=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -b`
+  REGISTER_SURFACES=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -r`
 
   # If the license file is empty then create from config inputs
   if [[ ! -f ${LICENSE_FILE} ]]; then
@@ -70,18 +86,12 @@ LOG_FILE=/flywheel/v0/output/$GEAR.log
   WORK_DIR=/"${SUBJECT_ID}"
   ln -s ${SUBJECTS_DIR}/"${SUBJECT_ID}" ${WORK_DIR}
 
-  ANATOMICAL=`find ${ANAT_DIR}/* -name "*.nii*"`
-
-  if [[ -z $ANATOMICAL ]]; then
-    echo "$CONTAINER  Anatomical Image could not be found in $ANAT_DIR! Exiting (1)"
-    exit 1
-  fi
 
   ###############################################################################
-  # Freesurfer
+  # Run Freesurfer-Recon-all
 
   # Run recon-all
-  recon-all -i "${ANATOMICAL}" -subjid "${SUBJECT_ID}" ${RECON_ALL_OPTS}
+  recon-all -i "${ANATOMICAL}" -subjid "${SUBJECT_ID}" "${RECON_ALL_OPTS}"
 
   if [[ $? != 0 ]]; then
     echo "$CONTAINER  recon-all failure! Check logs. Exiting (1)"
@@ -94,14 +104,14 @@ LOG_FILE=/flywheel/v0/output/$GEAR.log
   MRI_DIR=${SUBJECTS_DIR}/"${SUBJECT_ID}"/mri
 
   # Segmentation of hippocampal subfields
-  if [[ ${HIPPOCAMPUS} == 'true' ]]; then
+  if [[ ${HIPPOCAMPUS} == "True" ]]; then
     recon-all -subjid "${SUBJECT_ID}" -hippocampal-subfields-T1
     quantifyHippocampalSubfields.sh T1 "${MRI_DIR}"/HippocampalSubfields.txt
     tr ' ' ',' <"${MRI_DIR}"/HippocampalSubfields.txt >${OUTPUT_DIR}/"${SUBJECT_ID}"_HippocampalSubfields.csv
   fi
 
   # Brainstem Substructures
-  if [[ ${BRAINSTEM} == 'true' ]]; then
+  if [[ ${BRAINSTEM} == "True" ]]; then
     recon-all -subjid "${SUBJECT_ID}" -brainstem-structures
     quantifyBrainstemStructures.sh "${MRI_DIR}"/BrainstemStructures.txt
     tr ' ' ',' <"${MRI_DIR}"/BrainstemStructures.txt >${OUTPUT_DIR}/"${SUBJECT_ID}"_BrainstemStructures.csv
@@ -110,7 +120,7 @@ LOG_FILE=/flywheel/v0/output/$GEAR.log
   ###############################################################################
   # Optional registrations
 
-  if [[ $REGISTER_SURFACES == "true" ]]; then
+  if [[ $REGISTER_SURFACES == "True" ]]; then
     # Register hemispheres
     xhemireg --s "${SUBJECT_ID}"
 
@@ -124,7 +134,7 @@ LOG_FILE=/flywheel/v0/output/$GEAR.log
 
   ###############################################################################
   # Convert the output surface and volume files
-  if [[ $CONVERT_SURFACES == "true" ]]; then
+  if [[ $CONVERT_SURFACES == "True" ]]; then
 
     # Convert selected surfaces in subject/surf to obj in output
     SURF_DIR=${SUBJECTS_DIR}/"${SUBJECT_ID}"/surf
@@ -145,7 +155,7 @@ LOG_FILE=/flywheel/v0/output/$GEAR.log
   fi
 
   # Convert select volumes in subject/mri to nifti:
-  if [[ $CONVERT_VOLUMES == "true" ]]; then
+  if [[ $CONVERT_VOLUMES == "True" ]]; then
 
     MRI_DIR=${SUBJECTS_DIR}/"${SUBJECT_ID}"/mri
     mri_mgz_files='aparc+aseg.mgz
@@ -158,13 +168,13 @@ LOG_FILE=/flywheel/v0/output/$GEAR.log
                    orig.mgz
                    T1.mgz'
 
-    if [[ ${HIPPOCAMPUS} == 'true' ]]; then
+    if [[ ${HIPPOCAMPUS} == "True" ]]; then
       mri_mgz_files="$mri_mgz_files
                       lh.hippoSfLabels-T1.v10.FSvoxelSpace.mgz
                       rh.hippoSfLabels-T1.v10.FSvoxelSpace.mgz"
     fi
 
-    if [[ ${BRAINSTEM} == 'true' ]]; then
+    if [[ ${BRAINSTEM} == "True" ]]; then
       mri_mgz_files="$mri_mgz_files brainstemSsLabels.v10.FSvoxelSpace.mgz"
     fi
 
@@ -178,7 +188,7 @@ LOG_FILE=/flywheel/v0/output/$GEAR.log
   ###############################################################################
   # Write aseg stats to a table
 
-  if [[ $ASEG_CSV == "true" ]]; then
+  if [[ $ASEG_CSV == "True" ]]; then
       asegstats2table -i ${SUBJECTS_DIR}/"${SUBJECT_ID}"/stats/aseg.stats --delimiter comma --tablefile ${OUTPUT_DIR}/aseg_stats_vol_mm3.csv
 
       # Loop over all stats files and convert to csv (NYI)
