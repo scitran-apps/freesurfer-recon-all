@@ -58,7 +58,7 @@ LOG_FILE=/flywheel/v0/output/$GEAR.log
   fi
 
   ###############################################################################
-  # Parse Configuration and Set Options 
+  # Parse Configuration and Set Options
 
   CONFIG_FILE=${FLYWHEEL_BASE}/config.json
   MANIFEST_FILE=${FLYWHEEL_BASE}/manifest.json
@@ -78,7 +78,7 @@ LOG_FILE=/flywheel/v0/output/$GEAR.log
 
   # If the license file is empty then create from config inputs
   if [[ ! -f ${LICENSE_FILE} ]]; then
-    LICENSE=$(${FLYWHEEL_BASE}/parse_config.py -l)
+    LICENSE=$(${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -l)
     echo -e ${LICENSE} > ${LICENSE_FILE}
   fi
 
