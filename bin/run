@@ -45,16 +45,38 @@ LOG_FILE=/flywheel/v0/output/$GEAR.log
   # Configure paths
 
   FLYWHEEL_BASE=/flywheel/v0
-  OUTPUT_DIR=$FLYWHEEL_BASE/output
-  INPUT_DIR=$FLYWHEEL_BASE/input
-  ANAT_DIR=$INPUT_DIR/anatomical # Must match input from the manifest
+  OUTPUT_DIR=${FLYWHEEL_BASE}/output
+  INPUT_DIR=${FLYWHEEL_BASE}/input
+  ANAT_DIR=${INPUT_DIR}/anatomical # Must match input from the manifest
   LICENSE_FILE=${FREESURFER_HOME}/.license
-  ANATOMICAL=`find ${ANAT_DIR}/* -name "*.nii*"`
 
-  # Check for input file
-  if [[ -z $ANATOMICAL ]]; then
-    echo "$CONTAINER  Anatomical Image could not be found in $ANAT_DIR! Exiting (1)"
-    exit 1
+  ###############################################################################
+  # Check for anatomical NIfTI or DICOM archive
+
+  # NIfTI input file
+  ANATOMICAL=$(find ${ANAT_DIR}/* -name "*.nii*")
+
+  # DICOM archive
+  if [[ -z "${ANATOMICAL}" ]]; then
+    ANATOMICAL=$(find $INPUT_DIR/* -not -path '*/\.*' -type f | head -1)
+
+    # Handle Zip archive or uncompressed volume
+    if [[ "${ANATOMICAL}" == *.zip ]]; then
+      echo "$CONTAINER  Unzipping $ANATOMICAL"
+      DICOM_DIR="${ANAT_DIR}"/dicoms
+      mkdir ${DICOM_DIR}
+      unzip -q "${ANATOMICAL}" -d ${DICOM_DIR}
+
+      # Get the path to the first dicom file for input to recon-all
+      ANATOMICAL=$(find ${DICOM_DIR}/* -not -path '*/\.*' -type f | head -1)
+    fi
+
+    # Final check for anatomical file
+    if [[ -z "${ANATOMICAL}" ]]; then
+      echo "$CONTAINER  Anatomical input could not be found in $ANAT_DIR! Exiting (1)"
+      ls -lRa ${ANAT_DIR}
+      exit 1
+    fi
   fi
 
   ###############################################################################

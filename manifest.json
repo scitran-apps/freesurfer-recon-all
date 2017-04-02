@@ -11,11 +11,12 @@
   "version": "0.1.0",
   "inputs": {
     "anatomical": {
-      "description": "Input anatomical NIfTI file.",
+      "description": "Anatomical NIfTI file or DICOM archive.",
       "base": "file",
       "type": {
         "enum": [
-          "nifti"
+          "nifti",
+          "dicom"
         ]
       }
     }
