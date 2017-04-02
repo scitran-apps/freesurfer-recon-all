@@ -189,13 +189,23 @@ LOG_FILE=/flywheel/v0/output/$GEAR.log
   # Write aseg stats to a table
 
   if [[ $ASEG_CSV == "True" ]]; then
-      asegstats2table -i ${SUBJECTS_DIR}/"${SUBJECT_ID}"/stats/aseg.stats --delimiter comma --tablefile ${OUTPUT_DIR}/aseg_stats_vol_mm3.csv
+      asegstats2table -s "${SUBJECT_ID}" \
+          --delimiter comma \
+          --tablefile ${OUTPUT_DIR}/aseg_stats_vol_mm3.csv
 
-      # Loop over all stats files and convert to csv (NYI)
+      # Loop over all stats files and convert to csv. Some of these files can't
+      # be exported, so set +e as we expect errors
+      set +e
       for f in `find ${SUBJECTS_DIR}/"${SUBJECT_ID}"/stats/ -name "*.stats"`; do
-         asegstats2table -i ${f} --delimiter comma --tablefile ${OUTPUT_DIR}/`basename ${f}`.csv
+        echo $f
+        asegstats2table -i ${f} \
+          --all-segs \
+          --delimiter comma \
+          --tablefile ${OUTPUT_DIR}/`basename ${f}`.csv
       done
+      set -e
   fi
+
 
   ###############################################################################
   # Compress Recon-all output directory
