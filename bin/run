@@ -127,6 +127,7 @@ LOG_FILE=/flywheel/v0/output/$GEAR.log
 
   # Segmentation of hippocampal subfields
   if [[ ${HIPPOCAMPUS} == "True" ]]; then
+    echo -e "$CONTAINER  Starting segmentation of hippicampal subfields..."
     recon-all -subjid "${SUBJECT_ID}" -hippocampal-subfields-T1
     quantifyHippocampalSubfields.sh T1 "${MRI_DIR}"/HippocampalSubfields.txt
     tr ' ' ',' <"${MRI_DIR}"/HippocampalSubfields.txt >${OUTPUT_DIR}/"${SUBJECT_ID}"_HippocampalSubfields.csv
@@ -134,6 +135,7 @@ LOG_FILE=/flywheel/v0/output/$GEAR.log
 
   # Brainstem Substructures
   if [[ ${BRAINSTEM} == "True" ]]; then
+    echo -e "$CONTAINER  Starting segmentation of brainstem structures..."
     recon-all -subjid "${SUBJECT_ID}" -brainstem-structures
     quantifyBrainstemStructures.sh "${MRI_DIR}"/BrainstemStructures.txt
     tr ' ' ',' <"${MRI_DIR}"/BrainstemStructures.txt >${OUTPUT_DIR}/"${SUBJECT_ID}"_BrainstemStructures.csv
@@ -143,6 +145,7 @@ LOG_FILE=/flywheel/v0/output/$GEAR.log
   # Optional registrations
 
   if [[ $REGISTER_SURFACES == "True" ]]; then
+    echo -e "$CONTAINER  Running surface registrations..."
     # Register hemispheres
     xhemireg --s "${SUBJECT_ID}"
 
@@ -168,7 +171,7 @@ LOG_FILE=/flywheel/v0/output/$GEAR.log
               rh.inflated
               lh.inflated'
 
-    echo 'Converting surfaces to object files...'
+    echo -e "$CONTAINER  Converting surfaces to object (.obj) files..."
     for i in $surfaces; do
         mris_convert "${SURF_DIR}"/$i "${SURF_DIR}"/$i.asc
         ${FLYWHEEL_BASE}/srf2obj "${SURF_DIR}"/$i.asc > ${OUTPUT_DIR}/$i.obj
@@ -200,7 +203,7 @@ LOG_FILE=/flywheel/v0/output/$GEAR.log
       mri_mgz_files="$mri_mgz_files brainstemSsLabels.v10.FSvoxelSpace.mgz"
     fi
 
-    echo 'Converting volumes to nifti files...'
+    echo -e "$CONTAINER  Converting volumes to NIfTI files..."
     for i in $mri_mgz_files; do
       mri_convert -i "${MRI_DIR}"/$i -o ${OUTPUT_DIR}/`basename $i .mgz`.nii.gz
     done
@@ -211,28 +214,29 @@ LOG_FILE=/flywheel/v0/output/$GEAR.log
   # Write aseg stats to a table
 
   if [[ $ASEG_CSV == "True" ]]; then
-      asegstats2table -s "${SUBJECT_ID}" \
-          --delimiter comma \
-          --tablefile ${OUTPUT_DIR}/aseg_stats_vol_mm3.csv
+    echo -e "$CONTAINER  Exporting stats files csv..."
+    asegstats2table -s "${SUBJECT_ID}" \
+        --delimiter comma \
+        --tablefile ${OUTPUT_DIR}/aseg_stats_vol_mm3.csv
 
-      # Loop over all stats files and convert to csv. Some of these files can't
-      # be exported, so set +e as we expect errors
-      set +e
-      for f in `find ${SUBJECTS_DIR}/"${SUBJECT_ID}"/stats/ -name "*.stats"`; do
-        echo $f
-        asegstats2table -i ${f} \
-          --all-segs \
-          --delimiter comma \
-          --tablefile ${OUTPUT_DIR}/`basename ${f}`.csv
-      done
-      set -e
+    # Loop over all stats files and convert to csv. Some of these files can't
+    # be exported, so set +e as we expect errors
+    set +e
+    for f in `find ${SUBJECTS_DIR}/"${SUBJECT_ID}"/stats/ -name "*.stats"`; do
+      echo -e "exporting $f "
+      asegstats2table -i ${f} \
+        --all-segs \
+        --delimiter comma \
+        --tablefile ${OUTPUT_DIR}/`basename ${f}`.csv
+    done
+    set -e
   fi
 
 
   ###############################################################################
   # Compress Recon-all output directory
 
-  echo "Compressing outputs..."
+  echo -e "$CONTAINER  Compressing final outputs..."
 
   # Set file permissions prior to compression
   chmod -R 777 ${WORK_DIR}
