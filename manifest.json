@@ -23,7 +23,7 @@
   },
   "config": {
     "subject_id": {
-      "description": "Desired subject ID. This will be used to name the resulting freesurfer output directory.",
+      "description": "Desired subject ID (Default='s000'). This will be used to name the resulting freesurfer output directory.",
       "default": "s000",
       "type": "string"
     },
@@ -44,7 +44,7 @@
     },
     "register_surfaces": {
       "description": "Runs the xhemireg and surfreg scripts on your subject after having run recon-all in order to register the subject's left and inverted-right hemispheres to the fsaverage_sym subject. (The fsaverage_sym subject is a version of the fsaverage subject with a single the left-right symmetric pseudo-hemisphere.) (Default=true)",
-      "default": true,
+      "default": false,
       "type": "boolean"
     },
     "convert_surfaces": {
