@@ -4,14 +4,11 @@
 # Example build:
 #   docker build --no-cache --tag scitran/freesurfer-recon-all `pwd`
 #
-# Example usage: #TODO
+# Example usage:
 #   docker run -v /path/to/your/subject:/input scitran/freesurfer-recon-all
 #
 
-# Start with the Freesurfer container
 FROM ubuntu:trusty
-
-# Note the Maintainer
 MAINTAINER Michael Perry <lmperry@stanford.edu>
 
 # Install dependencies for FreeSurfer
@@ -27,11 +24,13 @@ RUN apt-get update && apt-get -y install \
         python2.7 \
         perl-modules
 
-# Download FS_v5.3.0 from MGH and untar to /opt
-RUN wget -N -qO- ftp://surfer.nmr.mgh.harvard.edu/pub/dist/freesurfer/5.3.0/freesurfer-Linux-centos4_x86_64-stable-pub-v5.3.0.tar.gz | tar -xzv -C /opt
+# Download Freesurfer v6.0.0 from MGH and untar to /opt
+RUN wget -N -qO- ftp://surfer.nmr.mgh.harvard.edu/pub/dist/freesurfer/6.0.0/freesurfer-Linux-centos6_x86_64-stable-pub-v6.0.0.tar.gz | tar -xz -C /opt
 
-# FREESURFER Licsense (Must have this file to build)
-COPY license /opt/freesurfer/.license
+# The brainstem and hippocampal subfield modules in FreeSurfer 6.0 require the Matlab R2012 runtime
+RUN apt-get install -y libxt-dev libxmu-dev
+ENV FREESURFER_HOME /opt/freesurfer
+RUN wget -N -qO- "http://surfer.nmr.mgh.harvard.edu/fswiki/MatlabRuntime?action=AttachFile&do=get&target=runtime2012bLinux.tar.gz" | tar -xz -C $FREESURFER_HOME
 
 # Make directory for flywheel spec (v0)
 ENV FLYWHEEL /flywheel/v0
@@ -44,18 +43,11 @@ COPY bin/run \
       manifest.json \
       ${FLYWHEEL}/
 
-# Copy the default config.json file to the container
-COPY bin/config.json ${FLYWHEEL}/default_config.json
-
-ADD https://raw.githubusercontent.com/scitran/utilities/daf5ebc7dac6dde1941ca2a6588cb6033750e38c/metadata_from_gear_output.py \
-      ${FLYWHEEL}/metadata_create.py
-
 # Handle file properties for execution
 RUN chmod +x \
       ${FLYWHEEL}/run \
       ${FLYWHEEL}/srf2obj \
-      ${FLYWHEEL}/parse_config.py \
-      ${FLYWHEEL}/metadata_create.py
+      ${FLYWHEEL}/parse_config.py
 
 # Run the run.sh script on entry.
 ENTRYPOINT ["/flywheel/v0/run"]
