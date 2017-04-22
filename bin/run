@@ -13,6 +13,13 @@ LOG_FILE=/flywheel/v0/output/$GEAR.log
 (
   echo -e "$CONTAINER  Initiated"
   set -e
+  ###############################################################################
+  # Utilities
+
+  # Remove the spaces in directory and filenames recursively
+  despacer () {
+    find "$1" -depth -name "* *" -execdir rename 's/ /_/g' "{}" \;
+  }
 
   ###############################################################################
   # Configure Freesurfer and MCR ENV
@@ -53,6 +60,9 @@ LOG_FILE=/flywheel/v0/output/$GEAR.log
   ###############################################################################
   # Check for anatomical NIfTI or DICOM archive
 
+  # Despace filenames
+  despacer "${ANAT_DIR}"
+
   # NIfTI input file
   ANATOMICAL=$(find ${ANAT_DIR}/* -name "*.nii*")
 
@@ -67,7 +77,8 @@ LOG_FILE=/flywheel/v0/output/$GEAR.log
       mkdir ${DICOM_DIR}
       unzip -q "${ANATOMICAL}" -d ${DICOM_DIR}
 
-      # Get the path to the first dicom file for input to recon-all
+      # Get the 'despaced' path to the first dicom file for input to recon-all
+      despacer "${DICOM_DIR}"
       ANATOMICAL=$(find ${DICOM_DIR}/* -not -path '*/\.*' -type f | head -1)
     fi
 
@@ -89,7 +100,7 @@ LOG_FILE=/flywheel/v0/output/$GEAR.log
     CONFIG_FILE=${MANIFEST_FILE}
   fi
 
-  SUBJECT_ID=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -i`
+  SUBJECT_ID=$(echo `${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -i` | sed 's/ /_/g')
   RECON_ALL_OPTS=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -o`
   CONVERT_SURFACES=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -s`
   CONVERT_VOLUMES=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -n`
