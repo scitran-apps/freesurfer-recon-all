@@ -228,19 +228,20 @@ LOG_FILE=/flywheel/v0/output/$GEAR.log
     echo -e "$CONTAINER  Exporting stats files csv..."
     asegstats2table -s "${SUBJECT_ID}" \
         --delimiter comma \
-        --tablefile ${OUTPUT_DIR}/aseg_stats_vol_mm3.csv
+        --tablefile="${OUTPUT_DIR}/${SUBJECT_ID}_aseg_stats_vol_mm3.csv"
 
-    # Loop over all stats files and convert to csv. Some of these files can't
-    # be exported, so set +e as we expect errors
-    set +e
-    for f in `find ${SUBJECTS_DIR}/"${SUBJECT_ID}"/stats/ -name "*.stats"`; do
-      echo -e "exporting $f "
-      asegstats2table -i ${f} \
-        --all-segs \
-        --delimiter comma \
-        --tablefile ${OUTPUT_DIR}/`basename ${f}`.csv
-    done
-    set -e
+    # Parse the aparc files and write to table
+    hemi="lh rh"
+    parc="aparc.a2009s aparc"
+    for h in $hemi; do
+        for p in $parc; do
+          aparcstats2table -s "${SUBJECT_ID}" \
+            --hemi=$h \
+            --delimiter=comma \
+            --parc=$p \
+            --tablefile="${OUTPUT_DIR}/${SUBJECT_ID}_${h}_${p}_stats_area_mm2.csv"
+        done
+      done
   fi
 
 
