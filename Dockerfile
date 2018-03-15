@@ -25,13 +25,12 @@ RUN apt-get update && apt-get -y install \
         perl-modules
 
 # Download Freesurfer v6.0.0 from MGH and untar to /opt
-RUN wget -N -qO- ftp://surfer.nmr.mgh.harvard.edu/pub/dist/freesurfer/6.0.0/freesurfer-Linux-centos6_x86_64-stable-pub-v6.0.0.tar.gz | tar -xz -C /opt
+RUN wget -N -qO- ftp://surfer.nmr.mgh.harvard.edu/pub/dist/freesurfer/6.0.0/freesurfer-Linux-centos6_x86_64-stable-pub-v6.0.0.tar.gz | tar -xz -C /opt && chown -R root:root /opt/freesurfer
 
 # The brainstem and hippocampal subfield modules in FreeSurfer 6.0 require the Matlab R2012 runtime
 RUN apt-get install -y libxt-dev libxmu-dev
 ENV FREESURFER_HOME /opt/freesurfer
-RUN wget -N -qO- "http://surfer.nmr.mgh.harvard.edu/fswiki/MatlabRuntime?action=AttachFile&do=get&target=runtime2012bLinux.tar.gz" | tar -xz -C $FREESURFER_HOME
-RUN chown -R root:root $FREESURFER_HOME
+RUN wget -N -qO- "http://surfer.nmr.mgh.harvard.edu/fswiki/MatlabRuntime?action=AttachFile&do=get&target=runtime2012bLinux.tar.gz" | tar -xz -C $FREESURFER_HOME && chown -R root:root /opt/freesurfer/MCRv80
 
 # Make directory for flywheel spec (v0)
 ENV FLYWHEEL /flywheel/v0
