@@ -31,6 +31,7 @@ RUN wget -N -qO- ftp://surfer.nmr.mgh.harvard.edu/pub/dist/freesurfer/6.0.0/free
 RUN apt-get install -y libxt-dev libxmu-dev
 ENV FREESURFER_HOME /opt/freesurfer
 RUN wget -N -qO- "http://surfer.nmr.mgh.harvard.edu/fswiki/MatlabRuntime?action=AttachFile&do=get&target=runtime2012bLinux.tar.gz" | tar -xz -C $FREESURFER_HOME
+RUN chown -R root:root $FREESURFER_HOME
 
 # Make directory for flywheel spec (v0)
 ENV FLYWHEEL /flywheel/v0
