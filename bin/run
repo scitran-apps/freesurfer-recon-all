@@ -8,278 +8,269 @@
 GEAR=freesurfer-recon-all
 REPO=scitran
 CONTAINER="[${REPO}/$GEAR]"
-LOG_FILE=/flywheel/v0/output/$GEAR.log
 
-(
-  echo -e "$CONTAINER  Initiated"
-  set -e
-  ###############################################################################
-  # Utilities
+echo -e "$CONTAINER  Initiated"
+set -e
+###############################################################################
+# Utilities
 
-  # Remove the spaces in directory and filenames recursively
-  despacer () {
-    find "$1" -depth -name "* *" -execdir rename 's/ /_/g' "{}" \;
-  }
+# Remove the spaces in directory and filenames recursively
+despacer () {
+  find "$1" -depth -name "* *" -execdir rename 's/ /_/g' "{}" \;
+}
 
-  ###############################################################################
-  # Configure Freesurfer and MCR ENV
+###############################################################################
+# Configure Freesurfer and MCR ENV
 
-  export OS=Linux
-  export FS_OVERRIDE=0
-  export FIX_VERTEX_AREA=
-  export FSF_OUTPUT_FORMAT=nii.gz
-  export MNI_DIR=/opt/freesurfer/mni
-  export LOCAL_DIR=/opt/freesurfer/local
-  export FREESURFER_HOME=/opt/freesurfer
-  export FSFAST_HOME=/opt/freesurfer/fsfast
-  export MINC_BIN_DIR=/opt/freesurfer/mni/bin
-  export MINC_LIB_DIR=/opt/freesurfer/mni/lib
-  export MNI_DATAPATH=/opt/freesurfer/mni/data
-  export FMRI_ANALYSIS_DIR=/opt/freesurfer/fsfast
-  export PERL5LIB=/opt/freesurfer/mni/lib/perl5/5.8.5
-  export MNI_PERL5LIB=/opt/freesurfer/mni/lib/perl5/5.8.5
-  export XAPPLRESDIR=/opt/freesurfer/MCRv80/X11/app-defaults
-  export PATH=/opt/freesurfer/bin:/opt/freesurfer/fsfast/bin:/opt/freesurfer/tktools:/opt/freesurfer/mni/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-  export LD_LIBRARY_PATH=/opt/freesurfer/MCRv80/runtime/glnxa64:/opt/freesurfer/MCRv80/bin/glnxa64:/opt/freesurfer/MCRv80/sys/os/glnxa64:/opt/freesurfer/MCRv80/sys/java/jre/glnxa64/jre/lib/amd64/native_threads:/opt/freesurfer/MCRv80/sys/java/jre/glnxa64/jre/lib/amd64/server:/opt/freesurfer/MCRv80/sys/java/jre/glnxa64/jre/lib/amd64
+export OS=Linux
+export FS_OVERRIDE=0
+export FIX_VERTEX_AREA=
+export FSF_OUTPUT_FORMAT=nii.gz
+export MNI_DIR=/opt/freesurfer/mni
+export LOCAL_DIR=/opt/freesurfer/local
+export FREESURFER_HOME=/opt/freesurfer
+export FSFAST_HOME=/opt/freesurfer/fsfast
+export MINC_BIN_DIR=/opt/freesurfer/mni/bin
+export MINC_LIB_DIR=/opt/freesurfer/mni/lib
+export MNI_DATAPATH=/opt/freesurfer/mni/data
+export FMRI_ANALYSIS_DIR=/opt/freesurfer/fsfast
+export PERL5LIB=/opt/freesurfer/mni/lib/perl5/5.8.5
+export MNI_PERL5LIB=/opt/freesurfer/mni/lib/perl5/5.8.5
+export XAPPLRESDIR=/opt/freesurfer/MCRv80/X11/app-defaults
+export PATH=/opt/freesurfer/bin:/opt/freesurfer/fsfast/bin:/opt/freesurfer/tktools:/opt/freesurfer/mni/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+export LD_LIBRARY_PATH=/opt/freesurfer/MCRv80/runtime/glnxa64:/opt/freesurfer/MCRv80/bin/glnxa64:/opt/freesurfer/MCRv80/sys/os/glnxa64:/opt/freesurfer/MCRv80/sys/java/jre/glnxa64/jre/lib/amd64/native_threads:/opt/freesurfer/MCRv80/sys/java/jre/glnxa64/jre/lib/amd64/server:/opt/freesurfer/MCRv80/sys/java/jre/glnxa64/jre/lib/amd64
 
 
-  # Source FreeSurferEnv.sh then set subjects_dir
-  /bin/bash -c 'source $FREESURFER_HOME/FreeSurferEnv.sh &>/dev/null'
+# Source FreeSurferEnv.sh then set subjects_dir
+/bin/bash -c 'source $FREESURFER_HOME/FreeSurferEnv.sh &>/dev/null'
 
-  export SUBJECTS_DIR=/opt/freesurfer/subjects
+export SUBJECTS_DIR=/opt/freesurfer/subjects
 
-  ###############################################################################
-  # Configure paths
+###############################################################################
+# Configure paths
 
-  FLYWHEEL_BASE=/flywheel/v0
-  OUTPUT_DIR=${FLYWHEEL_BASE}/output
-  INPUT_DIR=${FLYWHEEL_BASE}/input
-  ANAT_DIR=${INPUT_DIR}/anatomical # Must match input from the manifest
-  LICENSE_FILE=${FREESURFER_HOME}/.license
+FLYWHEEL_BASE=/flywheel/v0
+OUTPUT_DIR=${FLYWHEEL_BASE}/output
+INPUT_DIR=${FLYWHEEL_BASE}/input
+ANAT_DIR=${INPUT_DIR}/anatomical # Must match input from the manifest
+LICENSE_FILE=${FREESURFER_HOME}/.license
 
-  ###############################################################################
-  # Check for anatomical NIfTI or DICOM archive
+###############################################################################
+# Check for anatomical NIfTI or DICOM archive
 
-  # Despace filenames
-  despacer "${ANAT_DIR}"
+# Despace filenames
+despacer "${ANAT_DIR}"
 
-  # NIfTI input file
-  ANATOMICAL=$(find ${ANAT_DIR}/* -name "*.nii*")
+# NIfTI input file
+ANATOMICAL=$(find ${ANAT_DIR}/* -name "*.nii*")
 
-  # DICOM archive
+# DICOM archive
+if [[ -z "${ANATOMICAL}" ]]; then
+  ANATOMICAL=$(find $INPUT_DIR/* -not -path '*/\.*' -type f | head -1)
+
+  # Handle Zip archive or uncompressed volume
+  if [[ "${ANATOMICAL}" == *.zip ]]; then
+    echo "$CONTAINER  Unzipping $ANATOMICAL"
+    DICOM_DIR="${ANAT_DIR}"/dicoms
+    mkdir ${DICOM_DIR}
+    unzip -q "${ANATOMICAL}" -d ${DICOM_DIR}
+
+    # Get the 'despaced' path to the first dicom file for input to recon-all
+    despacer "${DICOM_DIR}"
+    ANATOMICAL=$(find ${DICOM_DIR}/* -not -path '*/\.*' -type f | head -1)
+  fi
+
+  # Final check for anatomical file
   if [[ -z "${ANATOMICAL}" ]]; then
-    ANATOMICAL=$(find $INPUT_DIR/* -not -path '*/\.*' -type f | head -1)
-
-    # Handle Zip archive or uncompressed volume
-    if [[ "${ANATOMICAL}" == *.zip ]]; then
-      echo "$CONTAINER  Unzipping $ANATOMICAL"
-      DICOM_DIR="${ANAT_DIR}"/dicoms
-      mkdir ${DICOM_DIR}
-      unzip -q "${ANATOMICAL}" -d ${DICOM_DIR}
-
-      # Get the 'despaced' path to the first dicom file for input to recon-all
-      despacer "${DICOM_DIR}"
-      ANATOMICAL=$(find ${DICOM_DIR}/* -not -path '*/\.*' -type f | head -1)
-    fi
-
-    # Final check for anatomical file
-    if [[ -z "${ANATOMICAL}" ]]; then
-      echo "$CONTAINER  Anatomical input could not be found in $ANAT_DIR! Exiting (1)"
-      ls -lRa ${ANAT_DIR}
-      exit 1
-    fi
-  fi
-
-  ###############################################################################
-  # Parse Configuration and Set Options
-
-  CONFIG_FILE=${FLYWHEEL_BASE}/config.json
-  MANIFEST_FILE=${FLYWHEEL_BASE}/manifest.json
-
-  if [[ ! -f ${CONFIG_FILE} ]]; then
-    CONFIG_FILE=${MANIFEST_FILE}
-  fi
-
-  SUBJECT_ID=$(echo `${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -i` | sed 's/ /_/g')
-  RECON_ALL_OPTS=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -o`
-  CONVERT_SURFACES=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -s`
-  CONVERT_VOLUMES=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -n`
-  ASEG_CSV=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -a`
-  HIPPOCAMPUS=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -c`
-  BRAINSTEM=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -b`
-  REGISTER_SURFACES=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -r`
-
-  # If the license file is empty then create from config inputs
-  if [[ ! -f ${LICENSE_FILE} ]]; then
-    LICENSE=$(${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -l)
-    if [[ -z $LICENSE ]]; then
-      echo "NO LICENSE INFORMATION FOUND! Exiting(1)"
-      exit 1
-    fi
-    echo -e ${LICENSE} > ${LICENSE_FILE}
-  fi
-
-  # Make and link the subject's directory
-  WORK_DIR=/"${SUBJECT_ID}"
-  ln -s ${SUBJECTS_DIR}/"${SUBJECT_ID}" ${WORK_DIR}
-
-
-  ###############################################################################
-  # Run Freesurfer-Recon-all
-
-  # Run recon-all
-  recon-all -i "${ANATOMICAL}" -subjid "${SUBJECT_ID}" ${RECON_ALL_OPTS}
-
-  if [[ $? != 0 ]]; then
-    echo "$CONTAINER  recon-all failure! Check logs. Exiting (1)"
+    echo "$CONTAINER  Anatomical input could not be found in $ANAT_DIR! Exiting (1)"
+    ls -lRa ${ANAT_DIR}
     exit 1
   fi
+fi
 
-  ###############################################################################
-  # Optional Segmentations
+###############################################################################
+# Parse Configuration and Set Options
+
+CONFIG_FILE=${FLYWHEEL_BASE}/config.json
+MANIFEST_FILE=${FLYWHEEL_BASE}/manifest.json
+
+if [[ ! -f ${CONFIG_FILE} ]]; then
+  CONFIG_FILE=${MANIFEST_FILE}
+fi
+
+SUBJECT_ID=$(echo `${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -i` | sed 's/ /_/g')
+RECON_ALL_OPTS=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -o`
+CONVERT_SURFACES=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -s`
+CONVERT_VOLUMES=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -n`
+ASEG_CSV=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -a`
+HIPPOCAMPUS=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -c`
+BRAINSTEM=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -b`
+REGISTER_SURFACES=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -r`
+
+# If the license file is empty then create from config inputs
+if [[ ! -f ${LICENSE_FILE} ]]; then
+  LICENSE=$(${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -l)
+  if [[ -z $LICENSE ]]; then
+    echo "NO LICENSE INFORMATION FOUND! Exiting(1)"
+    exit 1
+  fi
+  echo -e ${LICENSE} > ${LICENSE_FILE}
+fi
+
+# Make and link the subject's directory
+WORK_DIR=/"${SUBJECT_ID}"
+ln -s ${SUBJECTS_DIR}/"${SUBJECT_ID}" ${WORK_DIR}
+
+
+###############################################################################
+# Run Freesurfer-Recon-all
+
+# Run recon-all
+recon-all -i "${ANATOMICAL}" -subjid "${SUBJECT_ID}" ${RECON_ALL_OPTS}
+
+if [[ $? != 0 ]]; then
+  echo "$CONTAINER  recon-all failure! Exiting (1)"
+  exit 1
+fi
+
+###############################################################################
+# Optional Segmentations
+
+MRI_DIR=${SUBJECTS_DIR}/"${SUBJECT_ID}"/mri
+
+# Segmentation of hippocampal subfields
+if [[ ${HIPPOCAMPUS} == "True" ]]; then
+  echo -e "$CONTAINER  Starting segmentation of hippicampal subfields..."
+  recon-all -subjid "${SUBJECT_ID}" -hippocampal-subfields-T1
+  quantifyHippocampalSubfields.sh T1 "${MRI_DIR}"/HippocampalSubfields.txt
+  tr ' ' ',' <"${MRI_DIR}"/HippocampalSubfields.txt >${OUTPUT_DIR}/"${SUBJECT_ID}"_HippocampalSubfields.csv
+fi
+
+# Brainstem Substructures
+if [[ ${BRAINSTEM} == "True" ]]; then
+  echo -e "$CONTAINER  Starting segmentation of brainstem structures..."
+  recon-all -subjid "${SUBJECT_ID}" -brainstem-structures
+  quantifyBrainstemStructures.sh "${MRI_DIR}"/BrainstemStructures.txt
+  tr ' ' ',' <"${MRI_DIR}"/BrainstemStructures.txt >${OUTPUT_DIR}/"${SUBJECT_ID}"_BrainstemStructures.csv
+fi
+
+###############################################################################
+# Optional registrations
+
+if [[ $REGISTER_SURFACES == "True" ]]; then
+  echo -e "$CONTAINER  Running surface registrations..."
+  # Register hemispheres
+  xhemireg --s "${SUBJECT_ID}"
+
+  # Register the left hemisphere to fsaverage_sym
+  surfreg --s "${SUBJECT_ID}" --t fsaverage_sym --lh
+
+  # Register the inverted right hemisphere to fsaverage_sym
+  surfreg --s "${SUBJECT_ID}" --t fsaverage_sym --lh --xhemi
+fi
+
+
+###############################################################################
+# Convert the output surface and volume files
+if [[ $CONVERT_SURFACES == "True" ]]; then
+
+  # Convert selected surfaces in subject/surf to obj in output
+  SURF_DIR=${SUBJECTS_DIR}/"${SUBJECT_ID}"/surf
+
+  surfaces='lh.pial
+            rh.pial
+            lh.white
+            rh.white
+            rh.inflated
+            lh.inflated'
+
+  echo -e "$CONTAINER  Converting surfaces to object (.obj) files..."
+  for i in $surfaces; do
+      mris_convert "${SURF_DIR}"/$i "${SURF_DIR}"/$i.asc
+      ${FLYWHEEL_BASE}/srf2obj "${SURF_DIR}"/$i.asc > ${OUTPUT_DIR}/$i.obj
+  done
+
+fi
+
+# Convert select volumes in subject/mri to nifti:
+if [[ $CONVERT_VOLUMES == "True" ]]; then
 
   MRI_DIR=${SUBJECTS_DIR}/"${SUBJECT_ID}"/mri
+  mri_mgz_files='aparc+aseg.mgz
+                 aparc.a2009s+aseg.mgz
+                 brainmask.mgz
+                 lh.ribbon.mgz
+                 rh.ribbon.mgz
+                 ribbon.mgz
+                 aseg.mgz
+                 orig.mgz
+                 T1.mgz'
 
-  # Segmentation of hippocampal subfields
   if [[ ${HIPPOCAMPUS} == "True" ]]; then
-    echo -e "$CONTAINER  Starting segmentation of hippicampal subfields..."
-    recon-all -subjid "${SUBJECT_ID}" -hippocampal-subfields-T1
-    quantifyHippocampalSubfields.sh T1 "${MRI_DIR}"/HippocampalSubfields.txt
-    tr ' ' ',' <"${MRI_DIR}"/HippocampalSubfields.txt >${OUTPUT_DIR}/"${SUBJECT_ID}"_HippocampalSubfields.csv
+    mri_mgz_files="$mri_mgz_files
+                    lh.hippoSfLabels-T1.v10.FSvoxelSpace.mgz
+                    rh.hippoSfLabels-T1.v10.FSvoxelSpace.mgz"
   fi
 
-  # Brainstem Substructures
   if [[ ${BRAINSTEM} == "True" ]]; then
-    echo -e "$CONTAINER  Starting segmentation of brainstem structures..."
-    recon-all -subjid "${SUBJECT_ID}" -brainstem-structures
-    quantifyBrainstemStructures.sh "${MRI_DIR}"/BrainstemStructures.txt
-    tr ' ' ',' <"${MRI_DIR}"/BrainstemStructures.txt >${OUTPUT_DIR}/"${SUBJECT_ID}"_BrainstemStructures.csv
+    mri_mgz_files="$mri_mgz_files brainstemSsLabels.v10.FSvoxelSpace.mgz"
   fi
 
-  ###############################################################################
-  # Optional registrations
+  echo -e "$CONTAINER  Converting volumes to NIfTI files..."
+  for i in $mri_mgz_files; do
+    mri_convert -i "${MRI_DIR}"/$i -o ${OUTPUT_DIR}/`basename $i .mgz`.nii.gz
+  done
 
-  if [[ $REGISTER_SURFACES == "True" ]]; then
-    echo -e "$CONTAINER  Running surface registrations..."
-    # Register hemispheres
-    xhemireg --s "${SUBJECT_ID}"
+fi
 
-    # Register the left hemisphere to fsaverage_sym
-    surfreg --s "${SUBJECT_ID}" --t fsaverage_sym --lh
+###############################################################################
+# Write aseg stats to a table
 
-    # Register the inverted right hemisphere to fsaverage_sym
-    surfreg --s "${SUBJECT_ID}" --t fsaverage_sym --lh --xhemi
-  fi
+if [[ $ASEG_CSV == "True" ]]; then
+  echo -e "$CONTAINER  Exporting stats files csv..."
+  asegstats2table -s "${SUBJECT_ID}" \
+      --delimiter comma \
+      --tablefile="${OUTPUT_DIR}/${SUBJECT_ID}_aseg_stats_vol_mm3.csv"
 
-
-  ###############################################################################
-  # Convert the output surface and volume files
-  if [[ $CONVERT_SURFACES == "True" ]]; then
-
-    # Convert selected surfaces in subject/surf to obj in output
-    SURF_DIR=${SUBJECTS_DIR}/"${SUBJECT_ID}"/surf
-
-    surfaces='lh.pial
-              rh.pial
-              lh.white
-              rh.white
-              rh.inflated
-              lh.inflated'
-
-    echo -e "$CONTAINER  Converting surfaces to object (.obj) files..."
-    for i in $surfaces; do
-        mris_convert "${SURF_DIR}"/$i "${SURF_DIR}"/$i.asc
-        ${FLYWHEEL_BASE}/srf2obj "${SURF_DIR}"/$i.asc > ${OUTPUT_DIR}/$i.obj
-    done
-
-  fi
-
-  # Convert select volumes in subject/mri to nifti:
-  if [[ $CONVERT_VOLUMES == "True" ]]; then
-
-    MRI_DIR=${SUBJECTS_DIR}/"${SUBJECT_ID}"/mri
-    mri_mgz_files='aparc+aseg.mgz
-                   aparc.a2009s+aseg.mgz
-                   brainmask.mgz
-                   lh.ribbon.mgz
-                   rh.ribbon.mgz
-                   ribbon.mgz
-                   aseg.mgz
-                   orig.mgz
-                   T1.mgz'
-
-    if [[ ${HIPPOCAMPUS} == "True" ]]; then
-      mri_mgz_files="$mri_mgz_files
-                      lh.hippoSfLabels-T1.v10.FSvoxelSpace.mgz
-                      rh.hippoSfLabels-T1.v10.FSvoxelSpace.mgz"
-    fi
-
-    if [[ ${BRAINSTEM} == "True" ]]; then
-      mri_mgz_files="$mri_mgz_files brainstemSsLabels.v10.FSvoxelSpace.mgz"
-    fi
-
-    echo -e "$CONTAINER  Converting volumes to NIfTI files..."
-    for i in $mri_mgz_files; do
-      mri_convert -i "${MRI_DIR}"/$i -o ${OUTPUT_DIR}/`basename $i .mgz`.nii.gz
-    done
-
-  fi
-
-  ###############################################################################
-  # Write aseg stats to a table
-
-  if [[ $ASEG_CSV == "True" ]]; then
-    echo -e "$CONTAINER  Exporting stats files csv..."
-    asegstats2table -s "${SUBJECT_ID}" \
-        --delimiter comma \
-        --tablefile="${OUTPUT_DIR}/${SUBJECT_ID}_aseg_stats_vol_mm3.csv"
-
-    # Parse the aparc files and write to table
-    hemi="lh rh"
-    parc="aparc.a2009s aparc"
-    for h in $hemi; do
-        for p in $parc; do
-          aparcstats2table -s "${SUBJECT_ID}" \
-            --hemi=$h \
-            --delimiter=comma \
-            --parc=$p \
-            --tablefile="${OUTPUT_DIR}/${SUBJECT_ID}_${h}_${p}_stats_area_mm2.csv"
-        done
+  # Parse the aparc files and write to table
+  hemi="lh rh"
+  parc="aparc.a2009s aparc"
+  for h in $hemi; do
+      for p in $parc; do
+        aparcstats2table -s "${SUBJECT_ID}" \
+          --hemi=$h \
+          --delimiter=comma \
+          --parc=$p \
+          --tablefile="${OUTPUT_DIR}/${SUBJECT_ID}_${h}_${p}_stats_area_mm2.csv"
       done
-  fi
+    done
+fi
 
 
-  ###############################################################################
-  # Compress Recon-all output directory
+###############################################################################
+# Compress Recon-all output directory
 
-  echo -e "$CONTAINER  Compressing final outputs..."
+echo -e "$CONTAINER  Compressing final outputs..."
 
-  # Set file permissions prior to compression
-  chmod -R 777 ${WORK_DIR}
-  cd /
-  zip -r /${OUTPUT_DIR}/${GEAR}_"${SUBJECT_ID}"`date +"_D%m-%d-%yT%H-%M"`.zip "${SUBJECT_ID}"
+# Set file permissions prior to compression
+chmod -R 777 ${WORK_DIR}
+cd /
+zip -r /${OUTPUT_DIR}/${GEAR}_"${SUBJECT_ID}"`date +"_D%m-%d-%yT%H-%M"`.zip "${SUBJECT_ID}"
 
 
-  ###############################################################################
-  # FINISH
+###############################################################################
+# FINISH
 
-  # Get a list of the files in the output directory
-  outputs=$(find $OUTPUT_DIR/* -maxdepth 0 -type f -name "*.zip")
+# Get a list of the files in the output directory
+outputs=$(find $OUTPUT_DIR/* -maxdepth 0 -type f -name "*.zip")
 
-  # If outputs exist, generate metadata, and exit
-  if [[ -z $outputs ]]
-  then
-    echo "$CONTAINER  GEAR FAILED... Exiting(1)"
-    exit 1
-  else
-
-    # Set permissions for outputs (prevent root only r/w)
-    chmod -R 777 $OUTPUT_DIR
-
-    # End
-    echo -e "$CONTAINER  Done!"
-  fi
-
+# If outputs exist, generate metadata, and exit
+if [[ -z $outputs ]]; then
+  echo "$CONTAINER  GEAR FAILED... Exiting(1)"
+  exit 1
+else
+  # Set permissions for outputs (prevent root only r/w)
+  chmod -R 777 $OUTPUT_DIR
+  echo -e "$CONTAINER  Done!"
   exit 0
-
-) 2>&1 | tee $LOG_FILE
+fi
