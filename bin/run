@@ -113,8 +113,8 @@ LOG_FILE=/flywheel/v0/output/$GEAR.log
   if [[ ! -f ${LICENSE_FILE} ]]; then
     LICENSE=$(${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -l)
     if [[ -z $LICENSE ]]; then
-      echo "NO LICENSE INFORMATION FOUND! Exiting(0)"
-      exit 0
+      echo "NO LICENSE INFORMATION FOUND! Exiting(1)"
+      exit 1
     fi
     echo -e ${LICENSE} > ${LICENSE_FILE}
   fi
@@ -264,12 +264,12 @@ LOG_FILE=/flywheel/v0/output/$GEAR.log
   # FINISH
 
   # Get a list of the files in the output directory
-  outputs=$(find $OUTPUT_DIR/* -maxdepth 0 -type f)
+  outputs=$(find $OUTPUT_DIR/* -maxdepth 0 -type f -name "*.zip")
 
   # If outputs exist, generate metadata, and exit
   if [[ -z $outputs ]]
   then
-    echo "$CONTAINER  FAILED: No results found in output directory... Exiting"
+    echo "$CONTAINER  GEAR FAILED... Exiting(1)"
     exit 1
   else
 
