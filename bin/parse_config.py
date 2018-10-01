@@ -63,11 +63,14 @@ def parse_config(args):
 
     # Parse config for license elements
     if args.l:
-        if config['config']['license_key'] and config['config']['license_key'][0] == "*":
-            license_key = config['config']['license_key']
+        if not config['config']['license_key'] or not config['config']['license_number'] or not config['config']['license_reference']:
+            print ""
         else:
-            license_key = "*" + config['config']['license_key']
-        print config['config']['license_email'] + "\\n" + config['config']['license_number'] + "\\n " + license_key + "\\n" + config['config']['license_reference'] + "\\n"
+            if config['config']['license_key'] and config['config']['license_key'][0] == "*":
+                license_key = config['config']['license_key']
+            else:
+                license_key = "*" + config['config']['license_key']
+            print config['config']['license_email'] + "\\n" + config['config']['license_number'] + "\\n " + license_key + "\\n" + config['config']['license_reference'] + "\\n"
 
 if __name__ == '__main__':
 

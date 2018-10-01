@@ -112,6 +112,10 @@ LOG_FILE=/flywheel/v0/output/$GEAR.log
   # If the license file is empty then create from config inputs
   if [[ ! -f ${LICENSE_FILE} ]]; then
     LICENSE=$(${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -l)
+    if [[ -z $LICENSE ]]; then
+      echo "NO LICENSE INFORMATION FOUND! Exiting(0)"
+      exit 0
+    fi
     echo -e ${LICENSE} > ${LICENSE_FILE}
   fi
 
