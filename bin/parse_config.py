@@ -28,10 +28,14 @@ def parse_config(args):
         config = {}
         config['config'] = {}
         for k in default_config.iterkeys():
-            config['config'][k] = default_config[k]['default']
+            if default_config[k].has_key('default'):
+                config['config'][k] = default_config[k]['default']
 
     if args.i:
-        print config['config']['subject_id']
+        if not config['config'].has_key('subject_id'):
+            print 's0000'
+        else:
+            print config['config']['subject_id']
 
     # Print options for recon-all
     if args.o:
@@ -63,7 +67,7 @@ def parse_config(args):
 
     # Parse config for license elements
     if args.l:
-        if not config['config']['license_key'] or not config['config']['license_number'] or not config['config']['license_reference']:
+        if not config['config'].has_key('license_key') or not config['config']['license_key']:
             print ""
         else:
             if config['config']['license_key'] and config['config']['license_key'][0] == "*":
