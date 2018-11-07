@@ -8,6 +8,7 @@
 def parse_config(args):
     import json
     import os
+    import zipfile
 
     # If the config file does not exist then exit
     if not os.path.isfile(args.json_file):
@@ -65,16 +66,20 @@ def parse_config(args):
     if args.b:
         print config['config']['brainstem_structures']
 
+    # Process brainstem substructures
+    if args.z:
+        try:
+            zip = zipfile.ZipFile(config['inputs']['anatomical']['location']['path'])
+            print zip.namelist()[0].split('/')[0]
+        except:
+            print ''
+
     # Parse config for license elements
     if args.l:
-        if not config['config'].has_key('license_key') or not config['config']['license_key']:
+        if not config['config'].has_key('freesurfer_license'):
             print ""
         else:
-            if config['config']['license_key'] and config['config']['license_key'][0] == "*":
-                license_key = config['config']['license_key']
-            else:
-                license_key = "*" + config['config']['license_key']
-            print config['config']['license_email'] + "\\n" + config['config']['license_number'] + "\\n " + license_key + "\\n" + config['config']['license_reference'] + "\\n"
+            print ' '.join(config['config']['freesurfer_license'].split()).replace(" ", "\\n")
 
 if __name__ == '__main__':
 
@@ -90,6 +95,7 @@ if __name__ == '__main__':
     ap.add_argument('-c', action='store_true', help='Hippocampal subfields')
     ap.add_argument('-b', action='store_true', help='Brainstem processing')
     ap.add_argument('-r', action='store_true', help='Surface registration')
+    ap.add_argument('-z', action='store_true', help='Get sub code from zip input')
     args = ap.parse_args()
 
     parse_config(args)
