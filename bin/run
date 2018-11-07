@@ -55,38 +55,6 @@ INPUT_DIR=${FLYWHEEL_BASE}/input
 ANAT_DIR=${INPUT_DIR}/anatomical # Must match input from the manifest
 LICENSE_FILE=${FREESURFER_HOME}/.license
 
-###############################################################################
-# Check for anatomical NIfTI or DICOM archive
-
-# Despace filenames
-despacer "${ANAT_DIR}"
-
-# NIfTI input file
-ANATOMICAL=$(find ${ANAT_DIR}/* -name "*.nii*")
-
-# DICOM archive
-if [[ -z "${ANATOMICAL}" ]]; then
-  ANATOMICAL=$(find $INPUT_DIR/* -not -path '*/\.*' -type f | head -1)
-
-  # Handle Zip archive or uncompressed volume
-  if [[ "${ANATOMICAL}" == *.zip ]]; then
-    echo "$CONTAINER  Unzipping $ANATOMICAL"
-    DICOM_DIR="${ANAT_DIR}"/dicoms
-    mkdir ${DICOM_DIR}
-    unzip -q "${ANATOMICAL}" -d ${DICOM_DIR}
-
-    # Get the 'despaced' path to the first dicom file for input to recon-all
-    despacer "${DICOM_DIR}"
-    ANATOMICAL=$(find ${DICOM_DIR}/* -not -path '*/\.*' -type f | head -1)
-  fi
-
-  # Final check for anatomical file
-  if [[ -z "${ANATOMICAL}" ]]; then
-    echo "$CONTAINER  Anatomical input could not be found in $ANAT_DIR! Exiting (1)"
-    ls -lRa ${ANAT_DIR}
-    exit 1
-  fi
-fi
 
 ###############################################################################
 # Parse Configuration and Set Options
@@ -123,14 +91,86 @@ ln -s ${SUBJECTS_DIR}/"${SUBJECT_ID}" ${WORK_DIR}
 
 
 ###############################################################################
-# Run Freesurfer-Recon-all
+# Check for previous freesurfer run
 
-# Run recon-all
-recon-all -i "${ANATOMICAL}" -subjid "${SUBJECT_ID}" ${RECON_ALL_OPTS}
+FS_ARCHIVE=$(find ${ANAT_DIR}/* -name "freesurfer-recon-all*.zip")
+EXISTING_RUN=0
 
-if [[ $? != 0 ]]; then
-  echo "$CONTAINER  recon-all failure! Exiting (1)"
-  exit 1
+if [[ -f $FS_ARCHIVE ]]; then
+  unzip ${FS_ARCHIVE} -d ${SUBJECTS_DIR}
+  SUBJECT_ID=$(${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -z)
+  if [[ -z ${SUBJECT_ID} ]]; then
+    SUBJECT_ID=$(echo `${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -i` | sed 's/ /_/g')
+  fi
+  if [[ ! -d ${SUBJECTS_DIR}/${SUBJECT_ID} ]]; then
+    echo "$CONTAINER  No SUBJECT DIR could be found! Cannot continue. Exiting(1)"
+    exit 1
+  fi
+
+  EXISTING_RUN=1
+
+  ###############################################################################
+  # Run Freesurfer-Recon-all
+
+  # Run recon-all
+  echo "$CONTAINER  recon-all running from previous run...(recon-all -subjid ${SUBJECT_ID} ${RECON_ALL_OPTS})"
+  recon-all -subjid "${SUBJECT_ID}" ${RECON_ALL_OPTS}
+
+  if [[ $? != 0 ]]; then
+    echo "$CONTAINER  recon-all failure! Exiting (1)"
+    exit 1
+  fi
+
+fi
+
+
+###############################################################################
+# Check for anatomical NIfTI or DICOM archive
+
+if [[ ${EXISTING_RUN} == 0 ]]; then
+
+  # Despace filenames
+  despacer "${ANAT_DIR}"
+
+  # NIfTI input file
+  ANATOMICAL=$(find ${ANAT_DIR}/* -name "*.nii*")
+
+  # DICOM archive
+  if [[ -z "${ANATOMICAL}" ]]; then
+    ANATOMICAL=$(find $INPUT_DIR/* -not -path '*/\.*' -type f | head -1)
+
+    # Handle Zip archive or uncompressed volume
+    if [[ "${ANATOMICAL}" == *.zip ]]; then
+      echo "$CONTAINER  Unzipping $ANATOMICAL"
+      DICOM_DIR="${ANAT_DIR}"/dicoms
+      mkdir ${DICOM_DIR}
+      unzip -q "${ANATOMICAL}" -d ${DICOM_DIR}
+
+      # Get the 'despaced' path to the first dicom file for input to recon-all
+      despacer "${DICOM_DIR}"
+      ANATOMICAL=$(find ${DICOM_DIR}/* -not -path '*/\.*' -type f | head -1)
+    fi
+
+    # Final check for anatomical file
+    if [[ -z "${ANATOMICAL}" ]]; then
+      echo "$CONTAINER  Anatomical input could not be found in $ANAT_DIR! Exiting (1)"
+      ls -lRa ${ANAT_DIR}
+      exit 1
+    fi
+  fi
+
+
+
+  ###############################################################################
+  # Run Freesurfer-Recon-all
+
+  # Run recon-all
+  recon-all -i "${ANATOMICAL}" -subjid "${SUBJECT_ID}" ${RECON_ALL_OPTS}
+
+  if [[ $? != 0 ]]; then
+    echo "$CONTAINER  recon-all failure! Exiting (1)"
+    exit 1
+  fi
 fi
 
 ###############################################################################
