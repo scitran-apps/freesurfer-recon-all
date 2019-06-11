@@ -11,7 +11,10 @@
   "flywheel": "0",
   "version": "0.3.0",
   "custom": {
-    "docker-image": "scitran/freesurfer-recon-all:0.3.0"
+    "docker-image": "scitran/freesurfer-recon-all:0.3.0",
+    "flywheel": {
+      "suite": "FreeSurfer"
+    }
   },
   "inputs": {
     "anatomical": {
