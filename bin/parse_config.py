@@ -66,7 +66,7 @@ def parse_config(args):
     if args.b:
         print config['config']['brainstem_structures']
 
-    # Process brainstem substructures
+    # Get subject code from archive input
     if args.z:
         try:
             zip = zipfile.ZipFile(config['inputs']['anatomical']['location']['path'])

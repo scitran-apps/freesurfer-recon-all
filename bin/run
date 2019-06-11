@@ -52,7 +52,12 @@ export SUBJECTS_DIR=/opt/freesurfer/subjects
 FLYWHEEL_BASE=/flywheel/v0
 OUTPUT_DIR=${FLYWHEEL_BASE}/output
 INPUT_DIR=${FLYWHEEL_BASE}/input
-ANAT_DIR=${INPUT_DIR}/anatomical # Must match input from the manifest
+ANAT_DIR=${INPUT_DIR}/anatomical
+ANAT_DIR_2=${INPUT_DIR}/t1w_anatomical_2
+ANAT_DIR_3=${INPUT_DIR}/t1w_anatomical_3
+ANAT_DIR_4=${INPUT_DIR}/t1w_anatomical_4
+ANAT_DIR_5=${INPUT_DIR}/t1w_anatomical_5
+T2_DIR=${INPUT_DIR}/t2w_anatomical
 LICENSE_FILE=${FREESURFER_HOME}/.license
 
 
@@ -159,13 +164,38 @@ if [[ ${EXISTING_RUN} == 0 ]]; then
     fi
   fi
 
+  # Proccess additoinal anatomical inputs
+  ADD_INPUTS=''
+  ANAT_DIRS=$(echo -e $ANAT_DIR_2 $ANAT_DIR_3 $ANAT_DIR_4 $ANAT_DIR_5)
+  for ad in $ANAT_DIRS; do
+    if [ -d ${ad} ]; then
+      despacer ${ad}
+      ANATOMICAL2=$(find ${ad}/* -name "*.nii*")
+      if [[ -f "$ANATOMICAL2" ]]; then
+        echo "Adding $ANATOMICAL2 to the processing stream..."
+        ADD_INPUTS=$ADD_INPUTS' -i '"$ANATOMICAL2"
+      fi
+    fi
+  done
+
+  # T2 input file
+  if [[ -d ${T2_DIR} ]]; then
+    despacer ${T2_DIR}
+    T2_ANAT=$(find ${T2_DIR}/* -name "*.nii*")
+    if [[ -f "$T2_ANAT" ]]; then
+      ADD_INPUTS=$ADD_INPUTS' -T2 '"$T2_ANAT"' -T2pial '
+    fi
+  fi
 
 
   ###############################################################################
   # Run Freesurfer-Recon-all
 
   # Run recon-all
-  recon-all -i "${ANATOMICAL}" -subjid "${SUBJECT_ID}" ${RECON_ALL_OPTS}
+  echo -e "Running recon all..."
+  command=$(echo -e "time recon-all -i "${ANATOMICAL}" "${ADD_INPUTS}" -subjid "${SUBJECT_ID}" ${RECON_ALL_OPTS}")
+  echo -e "${command}"
+  eval $command
 
   if [[ $? != 0 ]]; then
     echo "$CONTAINER  recon-all failure! Exiting (1)"
