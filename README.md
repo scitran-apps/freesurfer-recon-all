@@ -2,7 +2,7 @@
 [![Docker Stars](https://img.shields.io/docker/stars/scitran/freesurfer-recon-all.svg)](https://hub.docker.com/r/scitran/freesurfer-recon-all/)
 # scitran/freesurfer-recon-all
 
-This build context will create an image built to the [Flywheel Gear Specification](https://github.com/flywheel-io/gears/tree/master/spec), which can execute Freesurfer's `recon-all` (**v6.0.0**) within [Flywheel](https://flywheel.io), or locally.
+This build context will create an image built to the [Flywheel Gear Specification](https://github.com/flywheel-io/gears/tree/master/spec), which can execute Freesurfer's `recon-all` (**v6.0.1**) within [Flywheel](https://flywheel.io), or locally.
 
 * You *MUST* read and agree to the license agreement and [register with MGH before you use the software](https://surfer.nmr.mgh.harvard.edu/registration.html).
 * Once you get your license you can **edit the `manifest.json` file to include your license details before you build the container**. Without a license the execution of the code will fail.
