@@ -9,7 +9,7 @@
 #
 
 FROM ubuntu:trusty
-MAINTAINER Michael Perry <lmperry@stanford.edu>
+LABEL MAINTAINER="Michael Perry <lmperry@stanford.edu>"
 
 # Install dependencies for FreeSurfer
 RUN apt-get update && apt-get -y install \
@@ -24,8 +24,8 @@ RUN apt-get update && apt-get -y install \
         python2.7 \
         perl-modules
 
-# Download Freesurfer v6.0.0 from MGH and untar to /opt
-RUN wget -N -qO- ftp://surfer.nmr.mgh.harvard.edu/pub/dist/freesurfer/6.0.0/freesurfer-Linux-centos6_x86_64-stable-pub-v6.0.0.tar.gz | tar -xz -C /opt && chown -R root:root /opt/freesurfer
+# Download Freesurfer v6.0.1 from MGH and untar to /opt
+RUN wget -N -qO- ftp://surfer.nmr.mgh.harvard.edu/pub/dist/freesurfer/6.0.1/freesurfer-Linux-centos6_x86_64-stable-pub-v6.0.1.tar.gz | tar -xz -C /opt && chown -R root:root /opt/freesurfer
 
 # The brainstem and hippocampal subfield modules in FreeSurfer 6.0 require the Matlab R2012 runtime
 RUN apt-get install -y libxt-dev libxmu-dev
