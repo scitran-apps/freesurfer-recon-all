@@ -6,7 +6,7 @@ This build context will create an image built to the [Flywheel Gear Specificatio
 
 * You *MUST* read and agree to the license agreement and [register with MGH before you use the software](https://surfer.nmr.mgh.harvard.edu/registration.html).
 * Once you get your license you can **edit the `manifest.json` file to include your license details before you build the container**. Without a license the execution of the code will fail.
-* This image is built with the Matlab MCRv80 included. The MCR is required to run the optional Hippocampal Subfields and Brainstem Structures processing (see [`manifest.json`](manifest.json)).
+* This image is built with the Matlab MCRv84 included. The MCR is required to run the optional Hippocampal Subfields and Brainstem Structures processing (see [`manifest.json`](manifest.json)).
 * The resulting image is ~12GB and builds in ~15min.
 
 
