@@ -9,9 +9,9 @@
   "cite": "For citation information, please visit: https://surfer.nmr.mgh.harvard.edu/fswiki/FreeSurferMethodsCitation.",
   "license": "Other",
   "flywheel": "0",
-  "version": "0.3.1_6.0.1",
+  "version": "0.3.2_dev-dev",
   "custom": {
-    "docker-image": "scitran/freesurfer-recon-all:0.3.1_6.0.1",
+    "docker-image": "scitran/freesurfer-recon-all:0.3.2_dev-dev",
     "flywheel": {
       "suite": "FreeSurfer"
     }
@@ -98,6 +98,11 @@
       "description": "Generate automated segmentation of four different brainstem structures from the input T1 scan: medulla oblongata, pons, midbrain and superior cerebellar peduncle (SCP). We use a Bayesian segmentation algorithm that relies on a probabilistic atlas of the brainstem (and neighboring brain structures) built upon manual delineations of the structures on interest in 49 scans (10 for the brainstem structures, 39 for the surrounding structures). The delineation protocol for the brainstem was designed by Dr. Adam Boxer and his team at the UCSF Memory and Aging Center, and is described in the paper. Choosing this option will write <subject_id>_BrainstemStructures.csv to the final results. See: https://surfer.nmr.mgh.harvard.edu/fswiki/BrainstemSubstructures for more info. (Default=true)",
       "default": true,
       "type": "boolean"
+    },
+    "thalamic_nuclei": {
+        "description": "Generate parcellation of the thalamus into 25 different nuclei, using a probabilistic atlas built with histological data. The parcellation is based on structural MRI, either the main T1 scan processed through recon-all, or an additional scan of a different modality, which potentially shows better contrast between the nuclei. Choosing this option will write <subject_id>_thalamic-nuclei.lh.v10.T1.csv and <subject_id>_thalamic-nuclei.rh.v10.T1.stats.csv to the final results. See: https://surfer.nmr.mgh.harvard.edu/fswiki/ThalamicNuclei for more info. (Default=true)",
+        "default": true,
+        "type": "boolean"
     },
     "register_surfaces": {
       "description": "Runs the xhemireg and surfreg scripts on your subject after having run recon-all in order to register the subject's left and inverted-right hemispheres to the fsaverage_sym subject. (The fsaverage_sym subject is a version of the fsaverage subject with a single the left-right symmetric pseudo-hemisphere.) (Default=true)",

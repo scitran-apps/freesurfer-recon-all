@@ -36,9 +36,9 @@ export MNI_DATAPATH=/opt/freesurfer/mni/data
 export FMRI_ANALYSIS_DIR=/opt/freesurfer/fsfast
 export PERL5LIB=/opt/freesurfer/mni/lib/perl5/5.8.5
 export MNI_PERL5LIB=/opt/freesurfer/mni/lib/perl5/5.8.5
-export XAPPLRESDIR=/opt/freesurfer/MCRv80/X11/app-defaults
+export XAPPLRESDIR=/opt/freesurfer/MCRv84/X11/app-defaults
 export PATH=/opt/freesurfer/bin:/opt/freesurfer/fsfast/bin:/opt/freesurfer/tktools:/opt/freesurfer/mni/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-export LD_LIBRARY_PATH=/opt/freesurfer/MCRv80/runtime/glnxa64:/opt/freesurfer/MCRv80/bin/glnxa64:/opt/freesurfer/MCRv80/sys/os/glnxa64:/opt/freesurfer/MCRv80/sys/java/jre/glnxa64/jre/lib/amd64/native_threads:/opt/freesurfer/MCRv80/sys/java/jre/glnxa64/jre/lib/amd64/server:/opt/freesurfer/MCRv80/sys/java/jre/glnxa64/jre/lib/amd64
+export LD_LIBRARY_PATH=/opt/freesurfer/MCRv84/runtime/glnxa64:/opt/freesurfer/MCRv84/bin/glnxa64:/opt/freesurfer/MCRv84/sys/os/glnxa64:/opt/freesurfer/MCRv84/sys/java/jre/glnxa64/jre/lib/amd64/native_threads:/opt/freesurfer/MCRv84/sys/java/jre/glnxa64/jre/lib/amd64/server:/opt/freesurfer/MCRv84/sys/java/jre/glnxa64/jre/lib/amd64
 
 
 # Source FreeSurferEnv.sh then set subjects_dir
@@ -88,6 +88,7 @@ CONVERT_VOLUMES=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -n`
 ASEG_CSV=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -a`
 HIPPOCAMPUS=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -c`
 BRAINSTEM=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -b`
+THALAMUS=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -t`
 REGISTER_SURFACES=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -r`
 
 # Make and link the subject's directory
@@ -211,7 +212,13 @@ MRI_DIR=${SUBJECTS_DIR}/"${SUBJECT_ID}"/mri
 # Segmentation of hippocampal subfields
 if [[ ${HIPPOCAMPUS} == "True" ]]; then
   echo -e "$CONTAINER  Starting segmentation of hippicampal subfields..."
-  recon-all -subjid "${SUBJECT_ID}" -hippocampal-subfields-T1
+  # OLD: recon-all -subjid "${SUBJECT_ID}" -hippocampal-subfields-T1
+  # DEV:
+  segmentHA_T1.sh "${SUBJECT_ID}"
+  segmentHA_T2.sh "${SUBJECT_ID}" ${MRI_DIR}/T2.mgz 0 1
+  # Longitudinal Processing of Hippocampus: NOT PERFORMING
+  # segmentHA_T1_long.sh "${SUBJECT_ID}"
+
   quantifyHippocampalSubfields.sh T1 "${MRI_DIR}"/HippocampalSubfields.txt
   tr ' ' ',' <"${MRI_DIR}"/HippocampalSubfields.txt >${OUTPUT_DIR}/"${SUBJECT_ID}"_HippocampalSubfields.csv
 fi
@@ -219,11 +226,29 @@ fi
 # Brainstem Substructures
 if [[ ${BRAINSTEM} == "True" ]]; then
   echo -e "$CONTAINER  Starting segmentation of brainstem structures..."
-  recon-all -subjid "${SUBJECT_ID}" -brainstem-structures
+  # OLD: recon-all -subjid "${SUBJECT_ID}" -brainstem-structures
+  # DEV: 
+  segmentBS.sh "${SUBJECT_ID}"
   quantifyBrainstemStructures.sh "${MRI_DIR}"/BrainstemStructures.txt
   tr ' ' ',' <"${MRI_DIR}"/BrainstemStructures.txt >${OUTPUT_DIR}/"${SUBJECT_ID}"_BrainstemStructures.csv
 fi
 
+# Thalamic Nuclei
+if [[ ${THALAMUS} == "True " ]]; then
+    echo -e "$CONTAINER  Starting segmentation of thalamic nuclei..."
+    segmentThalamicNuclei.sh "${SUBJECT_ID}"
+    tr ' ' ',' <"${MRI_DIR}"/ThalamicNuclei.v10.T1.volumes.txt >${OUTPUT_DIR}/"${SUBJECT_ID}"_ThalamicNuclei.v10.T1.volumes.csv
+fi
+
+# Neuropythy retino-template algorithm
+# if [[ ${THALAMUS} == "True " ]]; then
+#     echo -e "$CONTAINER  Starting Neuropythy retino-template ..."
+#     python -m neuropythy atlas "${SUBJECT_ID}"
+#     python -m neuropythy surface_to_image "${SUBJECT_ID}" \
+#       --lh=$SUBJECTS_DIR/"${SUBJECT_ID}"/surf/lh.benson14_varea.mgz \
+#       --rh=$SUBJECTS_DIR/"${SUBJECT_ID}"/surf/rh.benson14_varea.mgz \
+#       $SUBJECTS_DIR/"${SUBJECT_ID}"/mri/varea.mgz
+# fi
 ###############################################################################
 # Optional registrations
 
@@ -286,6 +311,10 @@ if [[ $CONVERT_VOLUMES == "True" ]]; then
     mri_mgz_files="$mri_mgz_files brainstemSsLabels.v10.FSvoxelSpace.mgz"
   fi
 
+  if [[ ${THALAMUS} == "True" ]]; then
+    mri_mgz_files="$mri_mgz_files ThalamicNuclei.v10.T1.FSvoxelSpace.mgz"
+  fi
+
   echo -e "$CONTAINER  Converting volumes to NIfTI files..."
   for i in $mri_mgz_files; do
     mri_convert -i "${MRI_DIR}"/$i -o ${OUTPUT_DIR}/`basename $i .mgz`.nii.gz
@@ -314,6 +343,17 @@ if [[ $ASEG_CSV == "True" ]]; then
           --tablefile="${OUTPUT_DIR}/${SUBJECT_ID}_${h}_${p}_stats_area_mm2.csv"
       done
     done
+
+    if [[ ${THALAMUS} == "True" ]]; then
+        for h in $hemi; do
+            asegstats2table -s "${SUBJECT_ID}" \
+              --hemi=$h \
+              --delimiter=comma \
+              --statsfile=thalamic-nuclei.${h}.v10.T1.stats \
+              --tablefile="${OUTPUT_DIR}/${SUBJECT_ID}_thalamic-nuclei.${h}.v10.T1.csv"
+        done
+
+    fi
 fi
 
 

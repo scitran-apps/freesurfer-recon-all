@@ -34,52 +34,56 @@ def parse_config(args):
 
     if args.i:
         if not config['config'].has_key('subject_id'):
-            print 's0000'
+            print('s0000')
         else:
-            print config['config']['subject_id']
+            print(config['config']['subject_id'])
 
     # Print options for recon-all
     if args.o:
-        print config['config']['reconall_options']
+        print(config['config']['reconall_options'])
 
     # Print options for recon-all
     if args.r:
-        print config['config']['register_surfaces']
+        print(config['config']['register_surfaces'])
 
     # Convert surfaces to obj
     if args.s:
-        print config['config']['convert_surfaces']
+        print(config['config']['convert_surfaces'])
 
     # Convert mgz to nifti
     if args.n:
-        print config['config']['convert_volumes']
+        print(config['config']['convert_volumes'])
 
     # Convert aseg stats to csv
     if args.a:
-        print config['config']['convert_stats']
+        print(config['config']['convert_stats'])
 
     # Process hippocampal subfields
     if args.c:
-        print config['config']['hippocampal_subfields']
+        print(config['config']['hippocampal_subfields'])
 
     # Process brainstem substructures
     if args.b:
-        print config['config']['brainstem_structures']
+        print(config['config']['brainstem_structures'])
+
+    # Process thalamic nuclei
+    if args.t:
+        print(config['config']['thalamic_nuclei'])
 
     # Get subject code from archive input
     if args.z:
         try:
             zip = zipfile.ZipFile(config['inputs']['anatomical']['location']['path'])
-            print zip.namelist()[0].split('/')[0]
+            print(zip.namelist()[0].split('/')[0])
         except:
-            print ''
+            print('')
 
     # Parse config for license elements
     if args.l:
         if not config['config'].has_key('freesurfer_license'):
-            print ""
+            print("")
         else:
-            print ' '.join(config['config']['freesurfer_license'].split()).replace(" ", "\\n")
+            print(' '.join(config['config']['freesurfer_license'].split()).replace(" ", "\\n"))
 
 if __name__ == '__main__':
 
@@ -94,6 +98,7 @@ if __name__ == '__main__':
     ap.add_argument('-l', action='store_true', help='Generate License File')
     ap.add_argument('-c', action='store_true', help='Hippocampal subfields')
     ap.add_argument('-b', action='store_true', help='Brainstem processing')
+    ap.add_argument('-t', action='store_true', help='Thalamus processing')
     ap.add_argument('-r', action='store_true', help='Surface registration')
     ap.add_argument('-z', action='store_true', help='Get sub code from zip input')
     args = ap.parse_args()
