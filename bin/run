@@ -212,7 +212,13 @@ MRI_DIR=${SUBJECTS_DIR}/"${SUBJECT_ID}"/mri
 # Segmentation of hippocampal subfields
 if [[ ${HIPPOCAMPUS} == "True" ]]; then
   echo -e "$CONTAINER  Starting segmentation of hippicampal subfields..."
-  recon-all -subjid "${SUBJECT_ID}" -hippocampal-subfields-T1
+  # OLD: recon-all -subjid "${SUBJECT_ID}" -hippocampal-subfields-T1
+  # DEV:
+  segmentHA_T1.sh "${SUBJECT_ID}"
+  segmentHA_T2.sh "${SUBJECT_ID}" ${MRI_DIR}/T2.mgz 0 1
+  # Longitudinal Processing of Hippocampus: NOT PERFORMING
+  # segmentHA_T1_long.sh "${SUBJECT_ID}"
+
   quantifyHippocampalSubfields.sh T1 "${MRI_DIR}"/HippocampalSubfields.txt
   tr ' ' ',' <"${MRI_DIR}"/HippocampalSubfields.txt >${OUTPUT_DIR}/"${SUBJECT_ID}"_HippocampalSubfields.csv
 fi
@@ -220,7 +226,9 @@ fi
 # Brainstem Substructures
 if [[ ${BRAINSTEM} == "True" ]]; then
   echo -e "$CONTAINER  Starting segmentation of brainstem structures..."
-  recon-all -subjid "${SUBJECT_ID}" -brainstem-structures
+  # OLD: recon-all -subjid "${SUBJECT_ID}" -brainstem-structures
+  # DEV: 
+  segmentBS.sh "${SUBJECT_ID}"
   quantifyBrainstemStructures.sh "${MRI_DIR}"/BrainstemStructures.txt
   tr ' ' ',' <"${MRI_DIR}"/BrainstemStructures.txt >${OUTPUT_DIR}/"${SUBJECT_ID}"_BrainstemStructures.csv
 fi
@@ -231,6 +239,16 @@ if [[ ${THALAMUS} == "True " ]]; then
     segmentThalamicNuclei.sh "${SUBJECT_ID}"
     tr ' ' ',' <"${MRI_DIR}"/ThalamicNuclei.v10.T1.volumes.txt >${OUTPUT_DIR}/"${SUBJECT_ID}"_ThalamicNuclei.v10.T1.volumes.csv
 fi
+
+# Neuropythy retino-template algorithm
+# if [[ ${THALAMUS} == "True " ]]; then
+#     echo -e "$CONTAINER  Starting Neuropythy retino-template ..."
+#     python -m neuropythy atlas "${SUBJECT_ID}"
+#     python -m neuropythy surface_to_image "${SUBJECT_ID}" \
+#       --lh=$SUBJECTS_DIR/"${SUBJECT_ID}"/surf/lh.benson14_varea.mgz \
+#       --rh=$SUBJECTS_DIR/"${SUBJECT_ID}"/surf/rh.benson14_varea.mgz \
+#       $SUBJECTS_DIR/"${SUBJECT_ID}"/mri/varea.mgz
+# fi
 ###############################################################################
 # Optional registrations
 

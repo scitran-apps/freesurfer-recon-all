@@ -22,16 +22,22 @@ RUN apt-get update && apt-get -y install \
         python \
         libgomp1 \
         python2.7 \
+        python-pip \
         perl-modules
 
 # Download Freesurfer dev from MGH and untar to /opt
 RUN wget -N -qO- ftp://surfer.nmr.mgh.harvard.edu/pub/dist/freesurfer/dev/freesurfer-linux-centos6_x86_64-dev.tar.gz | tar -xz -C /opt && chown -R root:root /opt/freesurfer
 
-# The brainstem and hippocampal subfield modules in FreeSurfer 6.0 require the Matlab R2012 runtime
+# The brainstem and hippocampal subfield modules in FreeSurfer-dev require the Matlab R2014b runtime
 RUN apt-get install -y libxt-dev libxmu-dev
 ENV FREESURFER_HOME /opt/freesurfer
 
 RUN wget -N -qO- "https://surfer.nmr.mgh.harvard.edu/fswiki/MatlabRuntime?action=AttachFile&do=get&target=runtime2014bLinux.tar.gz" | tar -xz -C $FREESURFER_HOME && chown -R root:root /opt/freesurfer/MCRv84
+
+RUN apt-get install python-pip
+# Install neuropythy
+RUN pip install --upgrade pip && \
+    pip2.7 install neuropythy
 
 # Make directory for flywheel spec (v0)
 ENV FLYWHEEL /flywheel/v0
