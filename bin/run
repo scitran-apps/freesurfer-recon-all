@@ -218,9 +218,14 @@ if [[ ${HIPPOCAMPUS} == "True" ]]; then
   segmentHA_T2.sh "${SUBJECT_ID}" ${MRI_DIR}/T2.mgz 0 1
   # Longitudinal Processing of Hippocampus: NOT PERFORMING
   # segmentHA_T1_long.sh "${SUBJECT_ID}"
-
-  quantifyHippocampalSubfields.sh T1 "${MRI_DIR}"/HippocampalSubfields.txt
+  # OLD: 
+  # quantifyHippocampalSubfields.sh T1 "${MRI_DIR}"/HippocampalSubfields.txt
+  # DEV:
+  quantifyHAsubregions.sh hippoSf T1 "${MRI_DIR}"/HippocampalSubfields.txt ${SUBJECTS_DIR}
+  quantifyHAsubregions.sh amygNuc T1 "${MRI_DIR}"/AmygdalaNuclei.txt ${SUBJECTS_DIR}
+  # TODO: This is going to have to be parsed out.
   tr ' ' ',' <"${MRI_DIR}"/HippocampalSubfields.txt >${OUTPUT_DIR}/"${SUBJECT_ID}"_HippocampalSubfields.csv
+  tr ' ' ',' <"${MRI_DIR}"/AmygdalaNuclei.txt >${OUTPUT_DIR}/"${SUBJECT_ID}"_AmygdalaNuclei.csv
 fi
 
 # Brainstem Substructures
@@ -240,6 +245,13 @@ if [[ ${THALAMUS} == "True " ]]; then
     tr ' ' ',' <"${MRI_DIR}"/ThalamicNuclei.v10.T1.volumes.txt >${OUTPUT_DIR}/"${SUBJECT_ID}"_ThalamicNuclei.v10.T1.volumes.csv
 fi
 
+# Update Surface File Format, if needed.
+# Consequence of using FreeSurfer Dev
+#SURF_DIR=${SUBJECTS_DIR}/"${SUBJECT_ID}"/surf
+#for fl in $SURF_DIR/*; do
+#    ${FLYWHEEL_BASE}/surf_update.py $fl
+#done
+
 # Neuropythy retino-template algorithm
 # if [[ ${THALAMUS} == "True " ]]; then
 #     echo -e "$CONTAINER  Starting Neuropythy retino-template ..."
@@ -247,7 +259,7 @@ fi
 #     python -m neuropythy surface_to_image "${SUBJECT_ID}" \
 #       --lh=$SUBJECTS_DIR/"${SUBJECT_ID}"/surf/lh.benson14_varea.mgz \
 #       --rh=$SUBJECTS_DIR/"${SUBJECT_ID}"/surf/rh.benson14_varea.mgz \
-#       $SUBJECTS_DIR/"${SUBJECT_ID}"/mri/varea.mgz
+#       $SUBJECTS_DIR/"${SUBJECwT_ID}"/mri/varea.mgz
 # fi
 ###############################################################################
 # Optional registrations
