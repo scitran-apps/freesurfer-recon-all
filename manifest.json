@@ -11,7 +11,7 @@
   "flywheel": "0",
   "version": "0.3.2-dev",
   "custom": {
-    "docker-image": "scitran/freesurfer-recon-all:0.3.2-dev",
+    "docker-image": "scitran/freesurfer-recon-all-dev:0.3.2-dev",
     "flywheel": {
       "suite": "FreeSurfer"
     }
