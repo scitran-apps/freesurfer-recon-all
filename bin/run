@@ -211,7 +211,7 @@ MRI_DIR=${SUBJECTS_DIR}/"${SUBJECT_ID}"/mri
 
 # Segmentation of hippocampal subfields
 if [[ ${HIPPOCAMPUS} == "True" ]]; then
-  echo -e "$CONTAINER  Starting segmentation of hippicampal subfields..."
+  echo -e "$CONTAINER  Starting segmentation of hippocampal subfields..."
   # OLD: recon-all -subjid "${SUBJECT_ID}" -hippocampal-subfields-T1
   # DEV:
   segmentHA_T1.sh "${SUBJECT_ID}"
@@ -239,10 +239,13 @@ if [[ ${BRAINSTEM} == "True" ]]; then
 fi
 
 # Thalamic Nuclei
-if [[ ${THALAMUS} == "True " ]]; then
+if [[ ${THALAMUS} == "True" ]]; then
     echo -e "$CONTAINER  Starting segmentation of thalamic nuclei..."
     segmentThalamicNuclei.sh "${SUBJECT_ID}"
-    tr ' ' ',' <"${MRI_DIR}"/ThalamicNuclei.v10.T1.volumes.txt >${OUTPUT_DIR}/"${SUBJECT_ID}"_ThalamicNuclei.v10.T1.volumes.csv
+    # With nightly builds, "${MRI_DIR}"/ThalamicNuclei.${SUFFIX}.T1.volumes.txt
+    # ${SUFFIX} is unstable
+    ln -s "${MRI_DIR}"/ThalamicNuclei.*.T1.volumes.txt "${MRI_DIR}"/ThalamicNuclei.T1.volumes.txt
+    tr ' ' ',' <"${MRI_DIR}"/ThalamicNuclei.T1.volumes.txt >${OUTPUT_DIR}/"${SUBJECT_ID}"_ThalamicNuclei.T1.volumes.csv
 fi
 
 # Update Surface File Format, if needed.
@@ -314,17 +317,30 @@ if [[ $CONVERT_VOLUMES == "True" ]]; then
                  T1.mgz'
 
   if [[ ${HIPPOCAMPUS} == "True" ]]; then
-    mri_mgz_files="$mri_mgz_files
-                    lh.hippoSfLabels-T1.v10.FSvoxelSpace.mgz
-                    rh.hippoSfLabels-T1.v10.FSvoxelSpace.mgz"
+    # Create a symbolic link to the development version of this output specified
+    # by ${SUFFIX} in 
+    # rh.hippoSfLabels-T1.${SUFFIX}.FSvoxelSpace.mgz"
+
+    ln -s `ls "${MRI_DIR}"/lh.hippoAmygLabels-T1.*.FSvoxelSpace.mgz | egrep 'T1.v[0-9]+.FSvox'` "${MRI_DIR}"/lh.hippoAmygLabels-T1.FSvoxelSpace.mgz
+    ln -s `ls "${MRI_DIR}"/rh.hippoAmygLabels-T1.*.FSvoxelSpace.mgz | egrep 'T1.v[0-9]+.FSvox'` "${MRI_DIR}"/rh.hippoAmygLabels-T1.FSvoxelSpace.mgz
+    mri_mgz_files="lh.hippoAmygLabels-T1.FSvoxelSpace.mgz
+                   rh.hippoAmygLabels-T1.FSvoxelSpace.mgz"
   fi
 
   if [[ ${BRAINSTEM} == "True" ]]; then
-    mri_mgz_files="$mri_mgz_files brainstemSsLabels.v10.FSvoxelSpace.mgz"
+    # Create a symbolic link to the development version of this output specified
+    # by ${SUFFIX} in 
+    # brainstemSsLabels.${SUFFIX}.FSvoxelSpace.mgz
+    ln -s "${MRI_DIR}"/brainstemSsLabels.*.FSvoxelSpace.mgz "${MRI_DIR}"/brainstemSsLabels.FSvoxelSpace.mgz
+    mri_mgz_files="$mri_mgz_files brainstemSsLabels.FSvoxelSpace.mgz"
   fi
 
   if [[ ${THALAMUS} == "True" ]]; then
-    mri_mgz_files="$mri_mgz_files ThalamicNuclei.v10.T1.FSvoxelSpace.mgz"
+    # Create a symbolic link to the development version of this output specified
+    # by ${SUFFIX} in 
+    # ThalamicNuclei.${SUFFIX}.T1.FSvoxelSpace.mgz
+    ln -s "${MRI_DIR}"/ThalamicNuclei.*.T1.FSvoxelSpace.mgz "${MRI_DIR}"/ThalamicNuclei.T1.FSvoxelSpace.mgz
+    mri_mgz_files="$mri_mgz_files ThalamicNuclei.T1.FSvoxelSpace.mgz"
   fi
 
   echo -e "$CONTAINER  Converting volumes to NIfTI files..."
@@ -358,13 +374,16 @@ if [[ $ASEG_CSV == "True" ]]; then
 
     if [[ ${THALAMUS} == "True" ]]; then
         for h in $hemi; do
+            # Create a symbolic link to the development version of this output specified
+            # by ${SUFFIX} in 
+            # thalamic-nuclei.${h}.${SUFFIX}.T1.stats
+            ln -s ${SUBJECTS_DIR}/${SUBJECT_ID}/stats/thalamic-nuclei.${h}.*.T1.stats ${SUBJECTS_DIR}/${SUBJECT_ID}/stats/thalamic-nuclei.${h}.T1.stats
             asegstats2table -s "${SUBJECT_ID}" \
               --hemi=$h \
               --delimiter=comma \
-              --statsfile=thalamic-nuclei.${h}.v10.T1.stats \
-              --tablefile="${OUTPUT_DIR}/${SUBJECT_ID}_thalamic-nuclei.${h}.v10.T1.csv"
+              --statsfile=thalamic-nuclei.${h}.${SUFFIX}.T1.stats \
+              --tablefile="${OUTPUT_DIR}/${SUBJECT_ID}_thalamic-nuclei.${h}.T1.csv"
         done
-
     fi
 fi
 
