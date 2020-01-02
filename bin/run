@@ -256,14 +256,14 @@ fi
 #done
 
 # Neuropythy retino-template algorithm
-# if [[ ${THALAMUS} == "True " ]]; then
-#     echo -e "$CONTAINER  Starting Neuropythy retino-template ..."
-#     python -m neuropythy atlas "${SUBJECT_ID}"
-#     python -m neuropythy surface_to_image "${SUBJECT_ID}" \
-#       --lh=$SUBJECTS_DIR/"${SUBJECT_ID}"/surf/lh.benson14_varea.mgz \
-#       --rh=$SUBJECTS_DIR/"${SUBJECT_ID}"/surf/rh.benson14_varea.mgz \
-#       $SUBJECTS_DIR/"${SUBJECwT_ID}"/mri/varea.mgz
-# fi
+if [[ ${THALAMUS} == "True " ]]; then
+    echo -e "$CONTAINER  Starting Neuropythy retino-template ..."
+    python -m neuropythy atlas "${SUBJECT_ID}"
+    python -m neuropythy surface_to_image "${SUBJECT_ID}" \
+      --lh=$SUBJECTS_DIR/"${SUBJECT_ID}"/surf/lh.benson14_varea.mgz \
+      --rh=$SUBJECTS_DIR/"${SUBJECT_ID}"/surf/rh.benson14_varea.mgz \
+      $SUBJECTS_DIR/"${SUBJECwT_ID}"/mri/varea.mgz
+fi
 ###############################################################################
 # Optional registrations
 
