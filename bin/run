@@ -379,9 +379,8 @@ if [[ $ASEG_CSV == "True" ]]; then
             # thalamic-nuclei.${h}.${SUFFIX}.T1.stats
             ln -s ${SUBJECTS_DIR}/${SUBJECT_ID}/stats/thalamic-nuclei.${h}.*.T1.stats ${SUBJECTS_DIR}/${SUBJECT_ID}/stats/thalamic-nuclei.${h}.T1.stats
             asegstats2table -s "${SUBJECT_ID}" \
-              --hemi=$h \
               --delimiter=comma \
-              --statsfile=thalamic-nuclei.${h}.${SUFFIX}.T1.stats \
+              --statsfile=thalamic-nuclei.${h}.T1.stats \
               --tablefile="${OUTPUT_DIR}/${SUBJECT_ID}_thalamic-nuclei.${h}.T1.csv"
         done
     fi
