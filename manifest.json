@@ -108,6 +108,11 @@
         "default": true,
         "type": "boolean"
     },
+    "neuropythy_analysis": {
+        "description": "Perform a neuropythy analysis. See: https://github.com/noahbenson/neuropythy for more info. (Default=true)",
+        "default": true,
+        "type": "boolean"
+    },
     "register_surfaces": {
       "description": "Runs the xhemireg and surfreg scripts on your subject after having run recon-all in order to register the subject's left and inverted-right hemispheres to the fsaverage_sym subject. (The fsaverage_sym subject is a version of the fsaverage subject with a single the left-right symmetric pseudo-hemisphere.) (Default=true)",
       "default": true,

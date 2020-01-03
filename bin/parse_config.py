@@ -69,6 +69,9 @@ def parse_config(args):
     # Process thalamic nuclei
     if args.t:
         print(config['config']['thalamic_nuclei'])
+    # Process neuropythy commands    
+    if args.p:
+        print(config['config']['neuropythy_analysis'])
 
     # Get subject code from archive input
     if args.z:
@@ -99,6 +102,7 @@ if __name__ == '__main__':
     ap.add_argument('-c', action='store_true', help='Hippocampal subfields')
     ap.add_argument('-b', action='store_true', help='Brainstem processing')
     ap.add_argument('-t', action='store_true', help='Thalamus processing')
+    ap.add_argument('-p', action='store_true', help='Neuropythy processing')
     ap.add_argument('-r', action='store_true', help='Surface registration')
     ap.add_argument('-z', action='store_true', help='Get sub code from zip input')
     args = ap.parse_args()

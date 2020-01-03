@@ -89,6 +89,7 @@ ASEG_CSV=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -a`
 HIPPOCAMPUS=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -c`
 BRAINSTEM=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -b`
 THALAMUS=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -t`
+NEUROPYTHY=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -p`
 REGISTER_SURFACES=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -r`
 
 # Make and link the subject's directory
@@ -256,13 +257,16 @@ fi
 #done
 
 # Neuropythy retino-template algorithm
-if [[ ${THALAMUS} == "True " ]]; then
+if [[ ${NEUROPYTHY} == "True " ]]; then
     echo -e "$CONTAINER  Starting Neuropythy retino-template ..."
+    SAVE_LD_LIBRARY_PATH=$LD_LIBRARY_PATH
+    export LD_LIBRARY_PATH=
     python -m neuropythy atlas "${SUBJECT_ID}"
     python -m neuropythy surface_to_image "${SUBJECT_ID}" \
       --lh=$SUBJECTS_DIR/"${SUBJECT_ID}"/surf/lh.benson14_varea.mgz \
       --rh=$SUBJECTS_DIR/"${SUBJECT_ID}"/surf/rh.benson14_varea.mgz \
       $SUBJECTS_DIR/"${SUBJECT_ID}"/mri/varea.mgz
+    export LD_LIBRARY_PATH=$SAVE_LD_LIBRARY_PATH
 fi
 ###############################################################################
 # Optional registrations
