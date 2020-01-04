@@ -39,10 +39,6 @@ RUN apt-get install python-pip
 RUN pip install --upgrade pip && \
     pip2.7 install neuropythy
 
-# Apply patches
-COPY patches/surface_to_image.py /usr/local/lib/python2.7/dist-packages/neuropythy/commands/surface_to_image.py 
-COPY patches/io.py /usr/local/lib/python2.7/dist-packages/nibabel/freesurfer/io.py
-
 # Make directory for flywheel spec (v0)
 ENV FLYWHEEL /flywheel/v0
 RUN mkdir -p ${FLYWHEEL}

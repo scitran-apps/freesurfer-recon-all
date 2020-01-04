@@ -249,23 +249,16 @@ if [[ ${THALAMUS} == "True" ]]; then
     tr ' ' ',' <"${MRI_DIR}"/ThalamicNuclei.T1.volumes.txt >${OUTPUT_DIR}/"${SUBJECT_ID}"_ThalamicNuclei.T1.volumes.csv
 fi
 
-# Update Surface File Format, if needed.
-# Consequence of using FreeSurfer Dev
-#SURF_DIR=${SUBJECTS_DIR}/"${SUBJECT_ID}"/surf
-#for fl in $SURF_DIR/*; do
-#    ${FLYWHEEL_BASE}/surf_update.py $fl
-#done
 
 # Neuropythy retino-template algorithm
-if [[ ${NEUROPYTHY} == "True " ]]; then
+if [[ ${NEUROPYTHY} == "True" ]]; then
     echo -e "$CONTAINER  Starting Neuropythy retino-template ..."
+    # Matlab installation interfers with neuropythy execution.
     SAVE_LD_LIBRARY_PATH=$LD_LIBRARY_PATH
     export LD_LIBRARY_PATH=
-    python -m neuropythy atlas "${SUBJECT_ID}"
-    python -m neuropythy surface_to_image "${SUBJECT_ID}" \
-      --lh=$SUBJECTS_DIR/"${SUBJECT_ID}"/surf/lh.benson14_varea.mgz \
-      --rh=$SUBJECTS_DIR/"${SUBJECT_ID}"/surf/rh.benson14_varea.mgz \
-      $SUBJECTS_DIR/"${SUBJECT_ID}"/mri/varea.mgz
+    
+    python -m neuropythy atlas --verbose --volume-export "${SUBJECT_ID}"
+    
     export LD_LIBRARY_PATH=$SAVE_LD_LIBRARY_PATH
 fi
 ###############################################################################
@@ -327,7 +320,8 @@ if [[ $CONVERT_VOLUMES == "True" ]]; then
 
     ln -s `ls "${MRI_DIR}"/lh.hippoAmygLabels-T1.*.FSvoxelSpace.mgz | egrep 'T1.v[0-9]+.FSvox'` "${MRI_DIR}"/lh.hippoAmygLabels-T1.FSvoxelSpace.mgz
     ln -s `ls "${MRI_DIR}"/rh.hippoAmygLabels-T1.*.FSvoxelSpace.mgz | egrep 'T1.v[0-9]+.FSvox'` "${MRI_DIR}"/rh.hippoAmygLabels-T1.FSvoxelSpace.mgz
-    mri_mgz_files="lh.hippoAmygLabels-T1.FSvoxelSpace.mgz
+    mri_mgz_files="$mri_mgz_files 
+                   lh.hippoAmygLabels-T1.FSvoxelSpace.mgz
                    rh.hippoAmygLabels-T1.FSvoxelSpace.mgz"
   fi
 
@@ -345,6 +339,15 @@ if [[ $CONVERT_VOLUMES == "True" ]]; then
     # ThalamicNuclei.${SUFFIX}.T1.FSvoxelSpace.mgz
     ln -s "${MRI_DIR}"/ThalamicNuclei.*.T1.FSvoxelSpace.mgz "${MRI_DIR}"/ThalamicNuclei.T1.FSvoxelSpace.mgz
     mri_mgz_files="$mri_mgz_files ThalamicNuclei.T1.FSvoxelSpace.mgz"
+  fi
+
+  if [[ ${NEUROPYTHY} == "True" ]]; then
+    mri_mgz_files="$mri_mgz_files 
+                   wang15_mplbl.mgz
+                   benson14_varea.mgz
+                   benson14_eccen.mgz
+                   benson14_sigma.mgz
+                   benson14_angle.mgz"
   fi
 
   echo -e "$CONTAINER  Converting volumes to NIfTI files..."
