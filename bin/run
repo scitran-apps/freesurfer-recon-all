@@ -216,7 +216,12 @@ if [[ ${HIPPOCAMPUS} == "True" ]]; then
   # OLD: recon-all -subjid "${SUBJECT_ID}" -hippocampal-subfields-T1
   # DEV:
   segmentHA_T1.sh "${SUBJECT_ID}"
-  segmentHA_T2.sh "${SUBJECT_ID}" ${MRI_DIR}/T2.mgz 0 1
+
+  # if T2 input file
+  if [[ -f "$T2_ANAT" ]]; then
+    segmentHA_T2.sh "${SUBJECT_ID}" ${MRI_DIR}/T2.mgz 0 1
+  fi
+
   # Longitudinal Processing of Hippocampus: NOT PERFORMING
   # segmentHA_T1_long.sh "${SUBJECT_ID}"
   # OLD: 
