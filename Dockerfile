@@ -8,25 +8,8 @@
 #   docker run -v /path/to/your/subject:/input scitran/freesurfer-recon-all
 #
 
-FROM ubuntu:xenial
+FROM scitran/freesurfer-dev:20200104
 LABEL MAINTAINER="Michael Perry <lmperry@stanford.edu>"
-
-# Install dependencies for FreeSurfer
-RUN apt-get update && apt-get -y install \
-        bc \
-        tar \
-        zip \
-        wget \
-        gawk \
-        tcsh \
-        python \
-        libgomp1 \
-        python2.7 \
-        python-pip \
-        perl-modules
-
-# Download Freesurfer dev from MGH and untar to /opt
-RUN wget -N -qO- ftp://surfer.nmr.mgh.harvard.edu/pub/dist/freesurfer/dev/freesurfer-linux-centos6_x86_64-dev.tar.gz | tar -xz -C /opt && chown -R root:root /opt/freesurfer
 
 # The brainstem and hippocampal subfield modules in FreeSurfer-dev require the Matlab R2014b runtime
 RUN apt-get install -y libxt-dev libxmu-dev
