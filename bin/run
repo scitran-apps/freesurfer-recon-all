@@ -81,7 +81,14 @@ if [[ ! -f ${LICENSE_FILE} ]]; then
   echo -e ${LICENSE} > ${LICENSE_FILE}
 fi
 
-SUBJECT_ID=$(echo `${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -i` | sed 's/ /_/g')
+if [[ -z $1 ]] ;
+then
+SUBJECT_ID=$(echo `${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -i` | sed 's/ /_/g');
+else
+SUBJECT_ID=$1
+fi
+echo $1
+echo $SUBJECT_ID
 RECON_ALL_OPTS=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -o`
 CONVERT_SURFACES=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -s`
 CONVERT_VOLUMES=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -n`

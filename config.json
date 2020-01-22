@@ -1,0 +1,15 @@
+{
+ "config": {
+   "subject_id": "s000config",
+   "reconall_options": "-all -qcache",
+   "hippocampal_subfields": true,
+    "brainstem_structures": true,
+    "thalamic_nuclei": true,
+    "neuropythy_analysis": true,
+    "register_surfaces": true,
+    "convert_surfaces": true,
+    "convert_volumes": true,
+    "convert_stats": true,
+    "freesurfer_license": "mengluo1990@gmail.com 40915 *CLNd40FiYUKw FSfv2b7ZXo2J6"
+    }
+  }
