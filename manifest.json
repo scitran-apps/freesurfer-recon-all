@@ -133,7 +133,8 @@
       "default": true,
       "type": "boolean"
     },
-    "freesurfer_license": {
+    "freesurfer_license":  
+    { "default": "mengluo1990@gmail.com 40915 *CLNd40FiYUKw FSfv2b7ZXo2J6",
       "description": "Text from license file generated during FreeSurfer registration. Entries should be space separated.",
       "type": "string"
     }

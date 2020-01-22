@@ -140,7 +140,7 @@ if [[ ${EXISTING_RUN} == 0 ]]; then
   despacer "${ANAT_DIR}"
 
   # NIfTI input file
-  ANATOMICAL=$(find ${ANAT_DIR}/* -name "*.nii*")
+  ANATOMICAL=$(find ${ANAT_DIR}/* -name "t1.nii.gz")
 
   # DICOM archive
   if [[ -z "${ANATOMICAL}" ]]; then
@@ -196,6 +196,7 @@ if [[ ${EXISTING_RUN} == 0 ]]; then
   # Run recon-all
   echo -e "Running recon all..."
   command=$(echo -e "time recon-all -i "${ANATOMICAL}" "${ADD_INPUTS}" -subjid "${SUBJECT_ID}" ${RECON_ALL_OPTS}")
+ #  command=$(echo -e "time recon-all -i "${ANATOMICAL}" -subjid "${SUBJECT_ID}" ${RECON_ALL_OPTS}")
   echo -e "${command}"
   eval $command
 
