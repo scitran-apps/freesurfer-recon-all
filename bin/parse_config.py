@@ -62,6 +62,14 @@ def parse_config(args):
     if args.c:
         print(config['config']['hippocampal_subfields'])
 
+	# Process cerebellum segmentation
+    if args.e:
+        print(config['config']['cerebellum'])
+
+	# Process MORI transformation
+    if args.m:
+        print(config['config']['mori'])
+
     # Process brainstem substructures
     if args.b:
         print(config['config']['brainstem_structures'])
@@ -102,6 +110,8 @@ if __name__ == '__main__':
     ap.add_argument('-c', action='store_true', help='Hippocampal subfields')
     ap.add_argument('-b', action='store_true', help='Brainstem processing')
     ap.add_argument('-t', action='store_true', help='Thalamus processing')
+    ap.add_argument('-e', action='store_true', help='cerebellum processing')
+    ap.add_argument('-m', action='store_true', help='transform mori rois')
     ap.add_argument('-p', action='store_true', help='Neuropythy processing')
     ap.add_argument('-r', action='store_true', help='Surface registration')
     ap.add_argument('-z', action='store_true', help='Get sub code from zip input')

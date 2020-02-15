@@ -38,8 +38,6 @@ export PERL5LIB=/opt/freesurfer/mni/lib/perl5/5.8.5
 export MNI_PERL5LIB=/opt/freesurfer/mni/lib/perl5/5.8.5
 export XAPPLRESDIR=/opt/freesurfer/MCRv84/X11/app-defaults
 export PATH=/opt/freesurfer/bin:/opt/freesurfer/fsfast/bin:/opt/freesurfer/tktools:/opt/freesurfer/mni/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-export LD_LIBRARY_PATH=/opt/freesurfer/MCRv84/runtime/glnxa64:/opt/freesurfer/MCRv84/bin/glnxa64:/opt/freesurfer/MCRv84/sys/os/glnxa64:/opt/freesurfer/MCRv84/sys/java/jre/glnxa64/jre/lib/amd64/native_threads:/opt/freesurfer/MCRv84/sys/java/jre/glnxa64/jre/lib/amd64/server:/opt/freesurfer/MCRv84/sys/java/jre/glnxa64/jre/lib/amd64
-
 
 # Source FreeSurferEnv.sh then set subjects_dir
 /bin/bash -c 'source $FREESURFER_HOME/FreeSurferEnv.sh &>/dev/null'
@@ -59,7 +57,8 @@ ANAT_DIR_4=${INPUT_DIR}/t1w_anatomical_4
 ANAT_DIR_5=${INPUT_DIR}/t1w_anatomical_5
 T2_DIR=${INPUT_DIR}/t2w_anatomical
 LICENSE_FILE=${FREESURFER_HOME}/.license
-
+TEMPLATES=${FLYWHEEL_BASE}/templates
+MORI_DIR=${FLYWHEEL_BASE}/templates/MNI_JHU_tracts_ROIs
 
 ###############################################################################
 # Parse Configuration and Set Options
@@ -91,7 +90,8 @@ BRAINSTEM=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -b`
 THALAMUS=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -t`
 NEUROPYTHY=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -p`
 REGISTER_SURFACES=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -r`
-
+CEREBELLUM=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -e`
+MORI=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -m` 
 # Make and link the subject's directory
 WORK_DIR=/"${SUBJECT_ID}"
 ln -s ${SUBJECTS_DIR}/"${SUBJECT_ID}" ${WORK_DIR}
@@ -209,6 +209,75 @@ fi
 # Optional Segmentations
 
 MRI_DIR=${SUBJECTS_DIR}/"${SUBJECT_ID}"/mri
+
+# Segmentation of Cerebellum 
+
+if [[ ${CEREBELLUM} == "True" ]]; then
+  echo -e "$CONTAINER starting segmentation of cerebellum"
+  # Create binary mask of brainmask.mgz and MNI_152
+  mri_convert ${MRI_DIR}/brainmask.mgz ${MRI_DIR}/brainmask.nii.gz
+  mri_binarize --min 0.5 --i ${MRI_DIR}/brainmask.mgz --o ${MRI_DIR}/binbrainmask.nii.gz
+  mri_binarize --min 0.5 --i ${TEMPLATES}/MNI_152.nii.gz --o ${MRI_DIR}/binMNI_152.nii.gz
+  # calculate the transformation
+  antsRegistration -d 3 -v 0                 									\
+		-o ${MRI_DIR}/ants																	\
+		-r [${MRI_DIR}/binbrainmask.nii.gz,${MRI_DIR}/binMNI_152.nii.gz,1] 		\
+		-t Syn[0.1, 3, 0]														\
+		-c [100x75x20x0, 0, 10]													\
+		-m CC[${MRI_DIR}/brainmask.nii.gz, ${TEMPLATES}/MNI_152.nii.gz,1,4]		\
+		-f 4x3x2x1																\
+		-s 1x1x0x0																\
+		-x [${MRI_DIR}/binbrainmask.nii.gz, ${MRI_DIR}/binMNI_152.nii.gz]
+  # apply both affine and nonlinear transofrmation
+  antsApplyTransforms -d 3 														\
+		-i ${TEMPLATES}/Buckner_CB.nii.gz									\
+		-r ${MRI_DIR}/brainmask.nii.gz											\
+		-n Linear																\
+		-t ${MRI_DIR}/ants1Warp.nii.gz											\
+		-t ${MRI_DIR}/ants0GenericAffine.mat									\
+		-o ${MRI_DIR}/buckner2011_cerebellum.nii.gz
+  # copy it to output dir
+  mri_binarize --min 0.5 --i ${MRI_DIR}/buckner2011_cerebellum.nii.gz \
+						--o ${OUTPUT_DIR}/buckner2011_cerebellum.nii.gz
+fi
+
+# transform MORI to native space
+if [[ ${MORI} == "True" ]]; then
+  echo -e "$CONTRAINER starting transform MORI"
+  if [[ ${CEREBELLUM} != "True" ]]; then
+	# Create binary mask of brainmask.mgz and MNI_152
+    mri_convert  ${MRI_DIR}/brainmask.mgz ${MRI_DIR}/brainmask.nii.gz
+    mri_binarize --min 0.5 --i ${MRI_DIR}/brainmask.mgz --o ${MRI_DIR}/binbrainmask.nii.gz
+    mri_binarize --min 0.5 --i ${TEMPLATES}/MNI_152.nii.gz --o ${MRI_DIR}/binMNI_152.nii.gz
+    # calculate the transformation
+    antsRegistration -d 3 -v 0                 									\
+		-o ${MRI_DIR}/ants																	\
+		-r [${MRI_DIR}/binbrainmask.nii.gz,${MRI_DIR}/binMNI_152.nii.gz,1] 		\
+		-t Syn[0.1, 3, 0]														\
+		-c [100x75x20x0, 0, 10]													\
+		-m CC[${MRI_DIR}/brainmask.nii.gz, ${TEMPLATES}/MNI_152.nii.gz,1,4]		\
+		-f 4x3x2x1																\
+		-s 1x1x0x0																\
+		-x [${MRI_DIR}/binbrainmask.nii.gz, ${MRI_DIR}/binMNI_152.nii.gz]
+  fi
+  mkdir ${OUTPUT_DIR}/MORI
+  for ROI in `ls ${MORI_DIR}/*`; do
+    ROIname=$(basename -- "$ROI"); ROIname="${ROIname%.nii.gz}"  
+    antsApplyTransforms -d 3 														\
+		-i ${MORI_DIR}/${ROIname}.nii.gz									\
+		-r ${MRI_DIR}/brainmask.nii.gz											\
+		-n Linear																\
+		-t ${MRI_DIR}/ants1Warp.nii.gz											\
+		-t ${MRI_DIR}/ants0GenericAffine.mat									\
+		-o ${MRI_DIR}/MORI_${ROIname}.nii.gz
+    
+  mri_binarize --min 0.5 --i ${MRI_DIR}/MORI_${ROIname}.nii.gz \
+						--o ${OUTPUT_DIR}/MORI/MORI_${ROIname}.nii.gz
+  done
+fi
+ 	
+export LD_LIBRARY_PATH=/opt/freesurfer/MCRv84/runtime/glnxa64:/opt/freesurfer/MCRv84/bin/glnxa64:/opt/freesurfer/MCRv84/sys/os/glnxa64:/opt/freesurfer/MCRv84/sys/java/jre/glnxa64/jre/lib/amd64/native_threads:/opt/freesurfer/MCRv84/sys/java/jre/glnxa64/jre/lib/amd64/server:/opt/freesurfer/MCRv84/sys/java/jre/glnxa64/jre/lib/amd64
+
 
 # Segmentation of hippocampal subfields
 if [[ ${HIPPOCAMPUS} == "True" ]]; then
