@@ -216,8 +216,8 @@ if [[ ${CEREBELLUM} == "True" ]]; then
   echo -e "$CONTAINER starting segmentation of cerebellum"
   # Create binary mask of brainmask.mgz and MNI_152
   mri_convert ${MRI_DIR}/brainmask.mgz ${MRI_DIR}/brainmask.nii.gz
-  mri_binarize --min 0.5 --i ${MRI_DIR}/brainmask.mgz --o ${MRI_DIR}/binbrainmask.nii.gz
-  mri_binarize --min 0.5 --i ${TEMPLATES}/MNI_152.nii.gz --o ${MRI_DIR}/binMNI_152.nii.gz
+  mri_binarize --min 0.1 --i ${MRI_DIR}/brainmask.mgz --o ${MRI_DIR}/binbrainmask.nii.gz
+  mri_binarize --min 0.1 --i ${TEMPLATES}/MNI_152.nii.gz --o ${MRI_DIR}/binMNI_152.nii.gz
   # calculate the transformation
   antsRegistration -d 3 -v 0                 									\
 		-o ${MRI_DIR}/ants																	\
@@ -237,7 +237,7 @@ if [[ ${CEREBELLUM} == "True" ]]; then
 		-t ${MRI_DIR}/ants0GenericAffine.mat									\
 		-o ${MRI_DIR}/buckner2011_cerebellum.nii.gz
   # copy it to output dir
-  mri_binarize --min 0.5 --i ${MRI_DIR}/buckner2011_cerebellum.nii.gz \
+  mri_binarize --min 0.1 --i ${MRI_DIR}/buckner2011_cerebellum.nii.gz \
 						--o ${OUTPUT_DIR}/buckner2011_cerebellum.nii.gz
 fi
 
@@ -247,8 +247,8 @@ if [[ ${MORI} == "True" ]]; then
   if [[ ${CEREBELLUM} != "True" ]]; then
 	# Create binary mask of brainmask.mgz and MNI_152
     mri_convert  ${MRI_DIR}/brainmask.mgz ${MRI_DIR}/brainmask.nii.gz
-    mri_binarize --min 0.5 --i ${MRI_DIR}/brainmask.mgz --o ${MRI_DIR}/binbrainmask.nii.gz
-    mri_binarize --min 0.5 --i ${TEMPLATES}/MNI_152.nii.gz --o ${MRI_DIR}/binMNI_152.nii.gz
+    mri_binarize --min 0.1 --i ${MRI_DIR}/brainmask.mgz --o ${MRI_DIR}/binbrainmask.nii.gz
+    mri_binarize --min 0.1 --i ${TEMPLATES}/MNI_152.nii.gz --o ${MRI_DIR}/binMNI_152.nii.gz
     # calculate the transformation
     antsRegistration -d 3 -v 0                 									\
 		-o ${MRI_DIR}/ants																	\
@@ -271,7 +271,7 @@ if [[ ${MORI} == "True" ]]; then
 		-t ${MRI_DIR}/ants0GenericAffine.mat									\
 		-o ${MRI_DIR}/MORI_${ROIname}.nii.gz
     
-  mri_binarize --min 0.5 --i ${MRI_DIR}/MORI_${ROIname}.nii.gz \
+  mri_binarize --min 0.1 --i ${MRI_DIR}/MORI_${ROIname}.nii.gz \
 						--o ${OUTPUT_DIR}/MORI/MORI_${ROIname}.nii.gz
   done
 fi
