@@ -237,8 +237,8 @@ if [[ ${CEREBELLUM} == "True" ]]; then
 		-t ${MRI_DIR}/ants0GenericAffine.mat									\
 		-o ${MRI_DIR}/buckner2011_cerebellum.nii.gz
   # copy it to output dir
-  mri_binarize --min 0.1 --i ${MRI_DIR}/buckner2011_cerebellum.nii.gz \
-						--o ${OUTPUT_DIR}/buckner2011_cerebellum.nii.gz
+  mv ${MRI_DIR}/buckner2011_cerebellum.nii.gz \
+			${OUTPUT_DIR}/buckner2011_cerebellum.nii.gz
 fi
 
 # transform MORI to native space
@@ -321,6 +321,7 @@ if [[ ${THALAMUS} == "True" ]]; then
     # ${SUFFIX} is unstable
     ln -s "${MRI_DIR}"/ThalamicNuclei.*.T1.volumes.txt "${MRI_DIR}"/ThalamicNuclei.T1.volumes.txt
     tr ' ' ',' <"${MRI_DIR}"/ThalamicNuclei.T1.volumes.txt >${OUTPUT_DIR}/"${SUBJECT_ID}"_ThalamicNuclei.T1.volumes.csv
+
 fi
 
 
@@ -425,11 +426,35 @@ if [[ $CONVERT_VOLUMES == "True" ]]; then
   fi
 
   echo -e "$CONTAINER  Converting volumes to NIfTI files..."
-  for i in $mri_mgz_files; do
+  for  in $mri_mgz_files; do
     mri_convert -i "${MRI_DIR}"/$i -o ${OUTPUT_DIR}/`basename $i .mgz`.nii.gz
   done
 
 fi
+
+##############################################################################
+# Write ROIs separately into individual files
+# Cerebellum
+if [[ ${CEREBELLUM} == "True" ]]; then
+	${FLYWHEEL_BASE}/separateROIs.py -cb ${OUTPUT_DIR}/buckner2011_cerebellum.nii.gz \
+								  -aparcaseg ${OUTPUT_DIR}/aparc+aseg.nii.gz	
+fi
+
+# Thalamic Nuclei
+if [[ ${THALAMUS} == "True" ]]; then
+	# separate nuclei from the ThalamicNuclei.T1.FSvoxelSpace.nii.gz
+	# separate ROIs
+	${FLYWHEEL_BASE}/separateROIs.py -ThN ${OUTPUT_DIR}/ThalamicNuclei.T1.FSvoxelSpace.nii.gz \
+									 -ThLUT ${TEMPLATES}/FreesurferColorLUT_THALAMUS.txt 
+	
+fi
+
+if [[ ${NEUROPYTHY} == "True" ]]; then
+	${FLYWHEEL_BASE}/separateROIs.py -benV ${OUTPUT_DIR}/benson14_varea.nii.gz \
+									  -aparcaseg ${OUTPUT_DIR}/aparc+aseg.nii.gz	
+
+fi
+
 
 ###############################################################################
 # Write aseg stats to a table

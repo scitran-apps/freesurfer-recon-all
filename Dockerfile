@@ -95,12 +95,14 @@ RUN pip install --upgrade pip && \
 ENV FLYWHEEL /flywheel/v0
 RUN mkdir -p ${FLYWHEEL}
 
-COPY local/Buckner2011_7Networks_MNI152_FreeSurferConformed1mm_TightMask.nii.gz /flywheel/v0/templates/Buckner_CB.nii.gz
+COPY local/Buckner2011_17Networks_MNI152_FreeSurferConformed1mm_LooseMask.nii.gz /flywheel/v0/templates/Buckner_CB.nii.gz
 COPY local/FSL_MNI152_FreeSurferConformed_1mm.nii.gz /flywheel/v0/templates/MNI_152.nii.gz
 COPY local/MNI_JHU_tracts_ROIs/ /flywheel/v0/templates/MNI_JHU_tracts_ROIs/
+COPY local/FreesurferColorLUT_THALAMUS.txt /flywheel/v0/templates/FreesurferColorLUT_THALAMUS.txt
 # Copy and configure run script and metadata code
 COPY bin/run \
       bin/parse_config.py \
+	  bin/separateROIs.py \
       bin/srf2obj \
       manifest.json \
       ${FLYWHEEL}/
@@ -109,7 +111,8 @@ COPY bin/run \
 RUN chmod +x \
       ${FLYWHEEL}/run \
       ${FLYWHEEL}/srf2obj \
-      ${FLYWHEEL}/parse_config.py
+      ${FLYWHEEL}/parse_config.py \
+	  ${FLYWHEEL}/separateROIs.py
 WORKDIR ${FLYWHEEL}
 # Run the run.sh script on entry.
 ENTRYPOINT ["/flywheel/v0/run"]
