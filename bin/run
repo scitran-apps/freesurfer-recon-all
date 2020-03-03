@@ -92,9 +92,10 @@ NEUROPYTHY=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -p`
 REGISTER_SURFACES=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -r`
 CEREBELLUM=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -e`
 MORI=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -m` 
+APARC2009=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -aparc2009`
 # Make and link the subject's directory
 WORK_DIR=/"${SUBJECT_ID}"
-ln -s ${SUBJECTS_DIR}/"${SUBJECT_ID}" ${WORK_DIR}
+ln -sfn ${SUBJECTS_DIR}/"${SUBJECT_ID}" ${WORK_DIR}
 
 
 ###############################################################################
@@ -192,13 +193,16 @@ if [[ ${EXISTING_RUN} == 0 ]]; then
 
   ###############################################################################
   # Run Freesurfer-Recon-all
-
+  if [[  ${RECON_ALL_OPTS} == "False" ]];then
+	echo -e "recon all is false, skipping it"
+	  ln -sfn ${OUTPUT_DIR}/${SUBJECT_ID} ${SUBJECTS_DIR}/"${SUBJECT_ID}"
+    else 
   # Run recon-all
-  echo -e "Running recon all..."
-  command=$(echo -e "time recon-all -i "${ANATOMICAL}" "${ADD_INPUTS}" -subjid "${SUBJECT_ID}" ${RECON_ALL_OPTS}")
-  echo -e "${command}"
-  eval $command
-
+      echo -e "Running recon all..."
+      command=$(echo -e "time recon-all -i "${ANATOMICAL}" "${ADD_INPUTS}" -subjid "${SUBJECT_ID}" ${RECON_ALL_OPTS}")
+      echo -e "${command}"
+      eval $command
+  fi
   if [[ $? != 0 ]]; then
     echo "$CONTAINER  recon-all failure! Exiting (1)"
     exit 1
@@ -240,7 +244,10 @@ if [[ ${CEREBELLUM} == "True" ]]; then
   mv ${MRI_DIR}/buckner2011_cerebellum.nii.gz \
 			${OUTPUT_DIR}/buckner2011_cerebellum.nii.gz
 fi
-
+ROIs=${OUTPUT_DIR}/ROIs
+if [[ ! -d $ROIs ]]; then
+  mkdir ${OUTPUT_DIR}/ROIs
+fi
 # transform MORI to native space
 if [[ ${MORI} == "True" ]]; then
   echo -e "$CONTRAINER starting transform MORI"
@@ -260,7 +267,6 @@ if [[ ${MORI} == "True" ]]; then
 		-s 1x1x0x0																\
 		-x [${MRI_DIR}/binbrainmask.nii.gz, ${MRI_DIR}/binMNI_152.nii.gz]
   fi
-  mkdir ${OUTPUT_DIR}/MORI
   for ROI in `ls ${MORI_DIR}/*`; do
     ROIname=$(basename -- "$ROI"); ROIname="${ROIname%.nii.gz}"  
     antsApplyTransforms -d 3 														\
@@ -271,8 +277,9 @@ if [[ ${MORI} == "True" ]]; then
 		-t ${MRI_DIR}/ants0GenericAffine.mat									\
 		-o ${MRI_DIR}/MORI_${ROIname}.nii.gz
     
-  mri_binarize --min 0.1 --i ${MRI_DIR}/MORI_${ROIname}.nii.gz \
-						--o ${OUTPUT_DIR}/MORI/MORI_${ROIname}.nii.gz
+    mri_binarize --min 0.1 --i ${MRI_DIR}/MORI_${ROIname}.nii.gz \
+						--o ${OUTPUT_DIR}/ROIs/${ROIname}.nii.gz
+    rm ${MRI_DIR}/MORI_${ROIname}.nii.gz 
   done
 fi
  	
@@ -319,7 +326,7 @@ if [[ ${THALAMUS} == "True" ]]; then
     segmentThalamicNuclei.sh "${SUBJECT_ID}"
     # With nightly builds, "${MRI_DIR}"/ThalamicNuclei.${SUFFIX}.T1.volumes.txt
     # ${SUFFIX} is unstable
-    ln -s "${MRI_DIR}"/ThalamicNuclei.*.T1.volumes.txt "${MRI_DIR}"/ThalamicNuclei.T1.volumes.txt
+    ln -sfn "${MRI_DIR}"/ThalamicNuclei.*.T1.volumes.txt "${MRI_DIR}"/ThalamicNuclei.T1.volumes.txt
     tr ' ' ',' <"${MRI_DIR}"/ThalamicNuclei.T1.volumes.txt >${OUTPUT_DIR}/"${SUBJECT_ID}"_ThalamicNuclei.T1.volumes.csv
 
 fi
@@ -393,8 +400,8 @@ if [[ $CONVERT_VOLUMES == "True" ]]; then
     # by ${SUFFIX} in 
     # rh.hippoSfLabels-T1.${SUFFIX}.FSvoxelSpace.mgz"
 
-    ln -s `ls "${MRI_DIR}"/lh.hippoAmygLabels-T1.*.FSvoxelSpace.mgz | egrep 'T1.v[0-9]+.FSvox'` "${MRI_DIR}"/lh.hippoAmygLabels-T1.FSvoxelSpace.mgz
-    ln -s `ls "${MRI_DIR}"/rh.hippoAmygLabels-T1.*.FSvoxelSpace.mgz | egrep 'T1.v[0-9]+.FSvox'` "${MRI_DIR}"/rh.hippoAmygLabels-T1.FSvoxelSpace.mgz
+    ln -sfn `ls "${MRI_DIR}"/lh.hippoAmygLabels-T1.*.FSvoxelSpace.mgz | egrep 'T1.v[0-9]+.FSvox'` "${MRI_DIR}"/lh.hippoAmygLabels-T1.FSvoxelSpace.mgz
+    ln -sfn `ls "${MRI_DIR}"/rh.hippoAmygLabels-T1.*.FSvoxelSpace.mgz | egrep 'T1.v[0-9]+.FSvox'` "${MRI_DIR}"/rh.hippoAmygLabels-T1.FSvoxelSpace.mgz
     mri_mgz_files="$mri_mgz_files 
                    lh.hippoAmygLabels-T1.FSvoxelSpace.mgz
                    rh.hippoAmygLabels-T1.FSvoxelSpace.mgz"
@@ -404,7 +411,7 @@ if [[ $CONVERT_VOLUMES == "True" ]]; then
     # Create a symbolic link to the development version of this output specified
     # by ${SUFFIX} in 
     # brainstemSsLabels.${SUFFIX}.FSvoxelSpace.mgz
-    ln -s "${MRI_DIR}"/brainstemSsLabels.*.FSvoxelSpace.mgz "${MRI_DIR}"/brainstemSsLabels.FSvoxelSpace.mgz
+    ln -sfn "${MRI_DIR}"/brainstemSsLabels.*.FSvoxelSpace.mgz "${MRI_DIR}"/brainstemSsLabels.FSvoxelSpace.mgz
     mri_mgz_files="$mri_mgz_files brainstemSsLabels.FSvoxelSpace.mgz"
   fi
 
@@ -412,7 +419,7 @@ if [[ $CONVERT_VOLUMES == "True" ]]; then
     # Create a symbolic link to the development version of this output specified
     # by ${SUFFIX} in 
     # ThalamicNuclei.${SUFFIX}.T1.FSvoxelSpace.mgz
-    ln -s "${MRI_DIR}"/ThalamicNuclei.*.T1.FSvoxelSpace.mgz "${MRI_DIR}"/ThalamicNuclei.T1.FSvoxelSpace.mgz
+    ln -sfn "${MRI_DIR}"/ThalamicNuclei.*.T1.FSvoxelSpace.mgz "${MRI_DIR}"/ThalamicNuclei.T1.FSvoxelSpace.mgz
     mri_mgz_files="$mri_mgz_files ThalamicNuclei.T1.FSvoxelSpace.mgz"
   fi
 
@@ -426,7 +433,7 @@ if [[ $CONVERT_VOLUMES == "True" ]]; then
   fi
 
   echo -e "$CONTAINER  Converting volumes to NIfTI files..."
-  for  in $mri_mgz_files; do
+  for i in $mri_mgz_files; do
     mri_convert -i "${MRI_DIR}"/$i -o ${OUTPUT_DIR}/`basename $i .mgz`.nii.gz
   done
 
@@ -436,8 +443,7 @@ fi
 # Write ROIs separately into individual files
 # Cerebellum
 if [[ ${CEREBELLUM} == "True" ]]; then
-	${FLYWHEEL_BASE}/separateROIs.py -cb ${OUTPUT_DIR}/buckner2011_cerebellum.nii.gz \
-								  -aparcaseg ${OUTPUT_DIR}/aparc+aseg.nii.gz	
+	${FLYWHEEL_BASE}/separateROIs.py -cb ${OUTPUT_DIR}/buckner2011_cerebellum.nii.gz 
 fi
 
 # Thalamic Nuclei
@@ -450,11 +456,13 @@ if [[ ${THALAMUS} == "True" ]]; then
 fi
 
 if [[ ${NEUROPYTHY} == "True" ]]; then
-	${FLYWHEEL_BASE}/separateROIs.py -benV ${OUTPUT_DIR}/benson14_varea.nii.gz \
-									  -aparcaseg ${OUTPUT_DIR}/aparc+aseg.nii.gz	
+	${FLYWHEEL_BASE}/separateROIs.py -benV ${OUTPUT_DIR}/benson14_varea.nii.gz
 
 fi
 
+if [[ ${APARC2009} == "True" ]]; then
+	${FLYWHEEL_BASE}/separateROIs.py -aparc2009 ${OUTPUT_DIR}/aparc.a2009s+aseg.nii.gz	
+fi
 
 ###############################################################################
 # Write aseg stats to a table
@@ -483,7 +491,7 @@ if [[ $ASEG_CSV == "True" ]]; then
             # Create a symbolic link to the development version of this output specified
             # by ${SUFFIX} in 
             # thalamic-nuclei.${h}.${SUFFIX}.T1.stats
-            ln -s ${SUBJECTS_DIR}/${SUBJECT_ID}/stats/thalamic-nuclei.${h}.*.T1.stats ${SUBJECTS_DIR}/${SUBJECT_ID}/stats/thalamic-nuclei.${h}.T1.stats
+            ln -sfn ${SUBJECTS_DIR}/${SUBJECT_ID}/stats/thalamic-nuclei.${h}.*.T1.stats ${SUBJECTS_DIR}/${SUBJECT_ID}/stats/thalamic-nuclei.${h}.T1.stats
             asegstats2table -s "${SUBJECT_ID}" \
               --delimiter=comma \
               --statsfile=thalamic-nuclei.${h}.T1.stats \

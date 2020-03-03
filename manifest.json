@@ -108,6 +108,21 @@
         "default": true,
         "type": "boolean"
     },
+    "cerebellum": {
+        "description": "bring CerebellumParcellation-Bucker2011 (17Networks LooseMask) into native space, and generate separate image files for each volume",
+        "default":true,
+        "type": "boolean"
+    },
+    "mori": {
+        "description": "bring MORI  ROIs MNI_JHU_tracts_ROIs into native space",
+        "default":true,
+        "type": "boolean"
+    },
+    "aparc2009": {
+        "description": "separate the aparc.a2009 from freesurfer to individual images for each segment",
+        "default": true,
+        "type": "boolean"
+    },
     "neuropythy_analysis": {
         "description": "Perform a neuropythy analysis. See: https://github.com/noahbenson/neuropythy for more info. (Default=true)",
         "default": true,
