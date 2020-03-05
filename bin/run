@@ -59,6 +59,7 @@ T2_DIR=${INPUT_DIR}/t2w_anatomical
 LICENSE_FILE=${FREESURFER_HOME}/.license
 TEMPLATES=${FLYWHEEL_BASE}/templates
 MORI_DIR=${FLYWHEEL_BASE}/templates/MNI_JHU_tracts_ROIs
+ROIs=${OUTPUT_DIR}/ROIs
 
 ###############################################################################
 # Parse Configuration and Set Options
@@ -99,114 +100,88 @@ ln -sfn ${SUBJECTS_DIR}/"${SUBJECT_ID}" ${WORK_DIR}
 
 
 ###############################################################################
-# Check for previous freesurfer run
+# Check for anatomical NIfTI or DICOM archive
 
-FS_ARCHIVE=$(find ${ANAT_DIR}/* -name "freesurfer-recon-all*.zip")
-EXISTING_RUN=0
+# Despace filenames
+despacer "${ANAT_DIR}"
 
-if [[ -f $FS_ARCHIVE ]]; then
-  unzip ${FS_ARCHIVE} -d ${SUBJECTS_DIR}
-  SUBJECT_ID=$(${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -z)
-  if [[ -z ${SUBJECT_ID} ]]; then
-    SUBJECT_ID=$(echo `${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -i` | sed 's/ /_/g')
+# NIfTI input file
+ANATOMICAL=$(find ${ANAT_DIR}/* -name "*.nii*")
+
+# DICOM archive
+if [[ -z "${ANATOMICAL}" ]]; then
+  ANATOMICAL=$(find $INPUT_DIR/* -not -path '*/\.*' -type f | head -1)
+
+  # Handle Zip archive or uncompressed volume
+  if [[ "${ANATOMICAL}" == *.zip ]]; then
+    echo "$CONTAINER  Unzipping $ANATOMICAL"
+    DICOM_DIR="${ANAT_DIR}"/dicoms
+    mkdir ${DICOM_DIR}
+    unzip -q "${ANATOMICAL}" -d ${DICOM_DIR}
+
+    # Get the 'despaced' path to the first dicom file for input to recon-all
+    despacer "${DICOM_DIR}"
+    ANATOMICAL=$(find ${DICOM_DIR}/* -not -path '*/\.*' -type f | head -1)
   fi
-  if [[ ! -d ${SUBJECTS_DIR}/${SUBJECT_ID} ]]; then
-    echo "$CONTAINER  No SUBJECT DIR could be found! Cannot continue. Exiting(1)"
+
+  # Final check for anatomical file
+  if [[ -z "${ANATOMICAL}" ]]; then
+    echo "$CONTAINER  Anatomical input could not be found in $ANAT_DIR! Exiting (1)"
+    ls -lRa ${ANAT_DIR}
     exit 1
   fi
+fi
 
-  EXISTING_RUN=1
-
-  ###############################################################################
-  # Run Freesurfer-Recon-all
-
-  # Run recon-all
-  echo "$CONTAINER  recon-all running from previous run...(recon-all -subjid ${SUBJECT_ID} ${RECON_ALL_OPTS})"
-  recon-all -subjid "${SUBJECT_ID}" ${RECON_ALL_OPTS}
-
-  if [[ $? != 0 ]]; then
-    echo "$CONTAINER  recon-all failure! Exiting (1)"
-    exit 1
+# Proccess additional anatomical inputs
+ADD_INPUTS=''
+ANAT_DIRS=$(echo -e $ANAT_DIR_2 $ANAT_DIR_3 $ANAT_DIR_4 $ANAT_DIR_5)
+for ad in $ANAT_DIRS; do
+  if [ -d ${ad} ]; then
+    despacer ${ad}
+    ANATOMICAL2=$(find ${ad}/* -name "*.nii*")
+    if [[ -f "$ANATOMICAL2" ]]; then
+      echo "Adding $ANATOMICAL2 to the processing stream..."
+      ADD_INPUTS=$ADD_INPUTS' -i '"$ANATOMICAL2"
+    fi
   fi
+done
 
+# T2 input file
+if [[ -d ${T2_DIR} ]]; then
+  despacer ${T2_DIR}
+  T2_ANAT=$(find ${T2_DIR}/* -name "*.nii*")
+  if [[ -f "$T2_ANAT" ]]; then
+    ADD_INPUTS=$ADD_INPUTS' -T2 '"$T2_ANAT"' -T2pial '
+  fi
 fi
 
 
 ###############################################################################
-# Check for anatomical NIfTI or DICOM archive
-
-if [[ ${EXISTING_RUN} == 0 ]]; then
-
-  # Despace filenames
-  despacer "${ANAT_DIR}"
-
-  # NIfTI input file
-  ANATOMICAL=$(find ${ANAT_DIR}/* -name "*.nii*")
-
-  # DICOM archive
-  if [[ -z "${ANATOMICAL}" ]]; then
-    ANATOMICAL=$(find $INPUT_DIR/* -not -path '*/\.*' -type f | head -1)
-
-    # Handle Zip archive or uncompressed volume
-    if [[ "${ANATOMICAL}" == *.zip ]]; then
-      echo "$CONTAINER  Unzipping $ANATOMICAL"
-      DICOM_DIR="${ANAT_DIR}"/dicoms
-      mkdir ${DICOM_DIR}
-      unzip -q "${ANATOMICAL}" -d ${DICOM_DIR}
-
-      # Get the 'despaced' path to the first dicom file for input to recon-all
-      despacer "${DICOM_DIR}"
-      ANATOMICAL=$(find ${DICOM_DIR}/* -not -path '*/\.*' -type f | head -1)
-    fi
-
-    # Final check for anatomical file
-    if [[ -z "${ANATOMICAL}" ]]; then
-      echo "$CONTAINER  Anatomical input could not be found in $ANAT_DIR! Exiting (1)"
-      ls -lRa ${ANAT_DIR}
+# Run Freesurfer-Recon-all
+if [[  ${RECON_ALL_OPTS} == "False" ]];then
+  echo -e "recon all is false, skipping it"
+  echo -e "checking if the old freesurfer-recon-all*.zip is there"
+  FS_ARCHIVE=$(find ${OUTPUT_DIR}/* -name "freesurfer-recon-all*.zip")
+  if [[ -f "$FS_ARCHIVE" ]]; then
+      echo -e "unzipping old recon-all*.zip"
+      unzip -foq "${FS_ARCHIVE}" -d ${OUTPUT_DIR}
+  else
+      echo -e "$CONTAINER We cannot find existing .zip file"
+      echo "$CONTAINER  GEAR FAILED... Exiting(1)"
       exit 1
-    fi
   fi
-
-  # Proccess additoinal anatomical inputs
-  ADD_INPUTS=''
-  ANAT_DIRS=$(echo -e $ANAT_DIR_2 $ANAT_DIR_3 $ANAT_DIR_4 $ANAT_DIR_5)
-  for ad in $ANAT_DIRS; do
-    if [ -d ${ad} ]; then
-      despacer ${ad}
-      ANATOMICAL2=$(find ${ad}/* -name "*.nii*")
-      if [[ -f "$ANATOMICAL2" ]]; then
-        echo "Adding $ANATOMICAL2 to the processing stream..."
-        ADD_INPUTS=$ADD_INPUTS' -i '"$ANATOMICAL2"
-      fi
-    fi
-  done
-
-  # T2 input file
-  if [[ -d ${T2_DIR} ]]; then
-    despacer ${T2_DIR}
-    T2_ANAT=$(find ${T2_DIR}/* -name "*.nii*")
-    if [[ -f "$T2_ANAT" ]]; then
-      ADD_INPUTS=$ADD_INPUTS' -T2 '"$T2_ANAT"' -T2pial '
-    fi
-  fi
-
-
-  ###############################################################################
-  # Run Freesurfer-Recon-all
-  if [[  ${RECON_ALL_OPTS} == "False" ]];then
-	echo -e "recon all is false, skipping it"
-	  ln -sfn ${OUTPUT_DIR}/${SUBJECT_ID} ${SUBJECTS_DIR}/"${SUBJECT_ID}"
-    else 
-  # Run recon-all
-      echo -e "Running recon all..."
-      command=$(echo -e "time recon-all -i "${ANATOMICAL}" "${ADD_INPUTS}" -subjid "${SUBJECT_ID}" ${RECON_ALL_OPTS}")
-      echo -e "${command}"
-      eval $command
-  fi
-  if [[ $? != 0 ]]; then
-    echo "$CONTAINER  recon-all failure! Exiting (1)"
-    exit 1
-  fi
+  echo -e "linking SUBJECTS_DIR directory to freesurfer"
+  ln -sfn ${OUTPUT_DIR}/${SUBJECT_ID} ${SUBJECTS_DIR}/"${SUBJECT_ID}"
+  else 
+# Run recon-all
+    echo -e "Running recon all..."
+    command=$(echo -e "time recon-all -i "${ANATOMICAL}" "${ADD_INPUTS}" -subjid "${SUBJECT_ID}" ${RECON_ALL_OPTS}")
+    echo -e "${command}"
+    eval $command
+fi
+if [[ $? != 0 ]]; then
+  echo "$CONTAINER  recon-all failure! Exiting (1)"
+  exit 1
 fi
 
 ###############################################################################
@@ -215,7 +190,6 @@ fi
 MRI_DIR=${SUBJECTS_DIR}/"${SUBJECT_ID}"/mri
 
 # Segmentation of Cerebellum 
-
 if [[ ${CEREBELLUM} == "True" ]]; then
   echo -e "$CONTAINER starting segmentation of cerebellum"
   # Create binary mask of brainmask.mgz and MNI_152
@@ -244,7 +218,6 @@ if [[ ${CEREBELLUM} == "True" ]]; then
   mv ${MRI_DIR}/buckner2011_cerebellum.nii.gz \
 			${OUTPUT_DIR}/buckner2011_cerebellum.nii.gz
 fi
-ROIs=${OUTPUT_DIR}/ROIs
 if [[ ! -d $ROIs ]]; then
   mkdir ${OUTPUT_DIR}/ROIs
 fi
@@ -331,6 +304,7 @@ if [[ ${THALAMUS} == "True" ]]; then
 
 fi
 
+export LD_LIBRARY_PATH=""
 
 # Neuropythy retino-template algorithm
 if [[ ${NEUROPYTHY} == "True" ]]; then

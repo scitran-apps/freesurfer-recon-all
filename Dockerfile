@@ -94,11 +94,23 @@ RUN pip install --upgrade pip && \
 # Make directory for flywheel spec (v0)
 ENV FLYWHEEL /flywheel/v0
 RUN mkdir -p ${FLYWHEEL}
+RUN mkdir /flywheel/v0/templates/
 
-COPY local/Buckner2011_17Networks_MNI152_FreeSurferConformed1mm_LooseMask.nii.gz /flywheel/v0/templates/Buckner_CB.nii.gz
-COPY local/FSL_MNI152_FreeSurferConformed_1mm.nii.gz /flywheel/v0/templates/MNI_152.nii.gz
-COPY local/MNI_JHU_tracts_ROIs/ /flywheel/v0/templates/MNI_JHU_tracts_ROIs/
-COPY local/FreesurferColorLUT_THALAMUS.txt /flywheel/v0/templates/FreesurferColorLUT_THALAMUS.txt
+# Download and unzip Buckner's Cerebellum atlas
+RUN cd $WORKDIR
+RUN wget ftp://surfer.nmr.mgh.harvard.edu/pub/data/Buckner_JNeurophysiol11_MNI152.zip
+RUN unzip -j "Buckner_JNeurophysiol11_MNI152.zip" "Buckner_JNeurophysiol11_MNI152/Buckner2011_17Networks_MNI152_FreeSurferConformed1mm_LooseMask.nii.gz" -d "/flywheel/v0/templates/"
+RUN mv /flywheel/v0/templates/Buckner2011_17Networks_MNI152_FreeSurferConformed1mm_LooseMask.nii.gz /flywheel/v0/templates/Buckner_CB.nii.gz
+RUN unzip -j "Buckner_JNeurophysiol11_MNI152.zip" "Buckner_JNeurophysiol11_MNI152/FSL_MNI152_FreeSurferConformed_1mm.nii.gz" -d "/flywheel/v0/templates/"
+RUN mv /flywheel/v0/templates/FSL_MNI152_FreeSurferConformed_1mm.nii.gz /flywheel/v0/templates/MNI_152.nii.gz
+
+# Download the MORI ROIs 
+RUN wget --retry-connrefused --waitretry=5 --read-timeout=20 --timeout=15 -t 0 -q -O MORI_ROIs.zip "https://osf.io/zxdt9/download"
+RUN unzip MORI_ROIs.zip -d /flywheel/v0/templates/
+
+# Add Thalamus FS LUT
+COPY FreesurferColorLUT_THALAMUS.txt /flywheel/v0/templates/FreesurferColorLUT_THALAMUS.txt
+
 # Copy and configure run script and metadata code
 COPY bin/run \
       bin/parse_config.py \
