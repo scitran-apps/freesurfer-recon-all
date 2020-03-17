@@ -5,15 +5,21 @@
 This build context will create an image built to the [Flywheel Gear Specification](https://github.com/flywheel-io/gears/tree/master/spec), which can execute Freesurfer's `recon-all` (**v6.0.1**) within [Flywheel](https://flywheel.io), or locally.
 
 * You *MUST* read and agree to the license agreement and [register with MGH before you use the software](https://surfer.nmr.mgh.harvard.edu/registration.html).
-* Once you get your license you can **edit the `manifest.json` file to include your license details before you build the container**. Without a license the execution of the code will fail.
+* Once you get your license you can apply this license in one of three ways (order of precedence):
+    1. Browse to an instance of `license.txt` stored at any level of the Flywheel container hierarchy from the input `freesurfer_license_file`
+    2. Enter a space-delimited version of the license in the configuration `freesurfer_license`
+    3. Ensure that `license.txt` is a file at the project level.
 * This image is built with the Matlab MCRv80 included. The MCR is required to run the optional Hippocampal Subfields and Brainstem Structures processing (see [`manifest.json`](manifest.json)).
 * The resulting image is ~12GB and builds in ~15min.
 
 
 ### Configuration Options ###
-Configuration for running the algorithm (and adding the license) are defined within `manifest.json`. The options available, along with their defaults, are described in the [`manifest.json`](manifest.json) file.
+Configuration for running the algorithm are defined within `manifest.json`. The options available, along with their defaults, are described in the [`manifest.json`](manifest.json) file.
 
 If you would like to use specific options in a local run of this gear you can modify the `default` key for each option, which will be used during the local run - executed when executed with Docker.
+
+### Recent Updates
+Recent updates (3/2020) grant control over `recon-all` paralellization.  The `-parallel` flag is set to run certain stages of `recon-all` on all available computational cores.  To limit the number of cores set `n_cpus` to the desired number.
 
 ### Example Local Usage ###
 This Gear is designed to run within [Flywheel](https://flywheel.io), however you can run this Gear locally. To run ```recon-all``` from this image you can do the following:

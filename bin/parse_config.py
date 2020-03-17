@@ -43,7 +43,7 @@ def parse_config(args):
         config = {}
         config['config'] = {}
         for k in default_config.iterkeys():
-            if default_config[k].has_key('default'):
+            if default_config[k].get('default'):
                 config['config'][k] = default_config[k]['default']
     else:
         context = flywheel.GearContext(
@@ -51,7 +51,7 @@ def parse_config(args):
         )
 
     if args.i:
-        if not config['config'].has_key('subject_id'):
+        if not config['config'].get('subject_id'):
             print('s0000')
         else:
             print(config['config']['subject_id'])
@@ -59,14 +59,23 @@ def parse_config(args):
     # Print options for recon-all
     if args.o:
         option_string = config['config']['reconall_options']
+        # This is mixing old and new manners of doing this quite a bit
+        # It will work for a PoC, but going forward it would be good to
+        # standardize.
         if context.config['parallel']:
             option_string += ' -parallel '
-            if context.config['n_cpus'] is not 4:
-                max_cpus = mp.cpu_count()
-                if context.config['n_cpus'] < max_cpus:
+            # grab number of cpus from host.
+            max_cpus = mp.cpu_count()
+            # use of -parallel defaults to cpu_count unless specified
+            if context.config.get('n_cpus'):
+                # However, we will do strict checking on max_cpus
+                if context.config['n_cpus'] <= max_cpus:
                     option_string += '-openmp ' + str(context.config['n_cpus'])
                 else:
                     option_string += '-openmp ' + str(max_cpus)
+            else:
+                option_string += '-openmp ' + str(max_cpus)
+
         print(option_string)
 
     # Print options for recon-all
@@ -108,15 +117,17 @@ def parse_config(args):
         # files
 
         # grab input, config, and project in order they are checked
+        # from input:
         fs_license_file = context.get_input_path('freesurfer_license_file')
-
+        # from config:
         fs_license = context.config.get('freesurfer_license')
-
+        # from project (needs api-key in config.json/manifest.json):
         fw = context.client
         destination_id = context.destination.get('id')
         project_id = fw.get_analysis(destination_id).parents.project
         project = fw.get_project(project_id)
         project_license = project.get_file('license.txt')
+        # Check for freesurfer license in precedence order:
         # Check the inputs for the license file
         if fs_license_file:
             print(open(fs_license_file, 'r').read())
