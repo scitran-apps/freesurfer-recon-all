@@ -36,10 +36,8 @@ export MNI_DATAPATH=/opt/freesurfer/mni/data
 export FMRI_ANALYSIS_DIR=/opt/freesurfer/fsfast
 export PERL5LIB=/opt/freesurfer/mni/lib/perl5/5.8.5
 export MNI_PERL5LIB=/opt/freesurfer/mni/lib/perl5/5.8.5
-export XAPPLRESDIR=/opt/freesurfer/MCRv80/X11/app-defaults
+export XAPPLRESDIR=/opt/freesurfer/MCRv84/X11/app-defaults
 export PATH=/opt/freesurfer/bin:/opt/freesurfer/fsfast/bin:/opt/freesurfer/tktools:/opt/freesurfer/mni/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-export LD_LIBRARY_PATH=/opt/freesurfer/MCRv80/runtime/glnxa64:/opt/freesurfer/MCRv80/bin/glnxa64:/opt/freesurfer/MCRv80/sys/os/glnxa64:/opt/freesurfer/MCRv80/sys/java/jre/glnxa64/jre/lib/amd64/native_threads:/opt/freesurfer/MCRv80/sys/java/jre/glnxa64/jre/lib/amd64/server:/opt/freesurfer/MCRv80/sys/java/jre/glnxa64/jre/lib/amd64
-
 
 # Source FreeSurferEnv.sh then set subjects_dir
 /bin/bash -c 'source $FREESURFER_HOME/FreeSurferEnv.sh &>/dev/null'
@@ -58,8 +56,10 @@ ANAT_DIR_3=${INPUT_DIR}/t1w_anatomical_3
 ANAT_DIR_4=${INPUT_DIR}/t1w_anatomical_4
 ANAT_DIR_5=${INPUT_DIR}/t1w_anatomical_5
 T2_DIR=${INPUT_DIR}/t2w_anatomical
-LICENSE_FILE=${FREESURFER_HOME}/license.txt
-
+LICENSE_FILE=${FREESURFER_HOME}/.license
+TEMPLATES=${FLYWHEEL_BASE}/templates
+MORI_DIR=${FLYWHEEL_BASE}/templates/MNI_JHU_tracts_ROIs
+ROIs=${OUTPUT_DIR}/ROIs
 
 ###############################################################################
 # Parse Configuration and Set Options
@@ -75,9 +75,7 @@ fi
 if [[ ! -f ${LICENSE_FILE} ]]; then
   LICENSE=$(${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -l)
   if [[ -z $LICENSE ]]; then
-    echo "LICENSE INFORMATION NOT FOUND!"
-    echo "Please check inputs and project level files."
-    echo "Exiting(1)"
+    echo "NO LICENSE INFORMATION FOUND! Exiting(1)"
     exit 1
   fi
   echo -e ${LICENSE} > ${LICENSE_FILE}
@@ -90,119 +88,100 @@ CONVERT_VOLUMES=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -n`
 ASEG_CSV=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -a`
 HIPPOCAMPUS=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -c`
 BRAINSTEM=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -b`
+THALAMUS=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -t`
+NEUROPYTHY=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -p`
 REGISTER_SURFACES=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -r`
-
+CEREBELLUM=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -e`
+MORI=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -m` 
+APARC2009=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -aparc2009`
 # Make and link the subject's directory
 WORK_DIR=/"${SUBJECT_ID}"
-ln -s ${SUBJECTS_DIR}/"${SUBJECT_ID}" ${WORK_DIR}
-
-
-###############################################################################
-# Check for previous freesurfer run
-
-FS_ARCHIVE=$(find ${ANAT_DIR}/* -name "freesurfer-recon-all*.zip")
-EXISTING_RUN=0
-
-if [[ -f $FS_ARCHIVE ]]; then
-  unzip ${FS_ARCHIVE} -d ${SUBJECTS_DIR}
-  SUBJECT_ID=$(${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -z)
-  if [[ -z ${SUBJECT_ID} ]]; then
-    SUBJECT_ID=$(echo `${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -i` | sed 's/ /_/g')
-  fi
-  if [[ ! -d ${SUBJECTS_DIR}/${SUBJECT_ID} ]]; then
-    echo "$CONTAINER  No SUBJECT DIR could be found! Cannot continue. Exiting(1)"
-    exit 1
-  fi
-
-  EXISTING_RUN=1
-
-  ###############################################################################
-  # Run Freesurfer-Recon-all
-
-  # Run recon-all
-  echo "$CONTAINER  recon-all running from previous run...(recon-all -subjid ${SUBJECT_ID} ${RECON_ALL_OPTS})"
-  recon-all -subjid "${SUBJECT_ID}" ${RECON_ALL_OPTS}
-
-  if [[ $? != 0 ]]; then
-    echo "$CONTAINER  recon-all failure! Exiting (1)"
-    exit 1
-  fi
-
-fi
+ln -sfn ${SUBJECTS_DIR}/"${SUBJECT_ID}" ${WORK_DIR}
 
 
 ###############################################################################
 # Check for anatomical NIfTI or DICOM archive
 
-if [[ ${EXISTING_RUN} == 0 ]]; then
+# Despace filenames
+despacer "${ANAT_DIR}"
 
-  # Despace filenames
-  despacer "${ANAT_DIR}"
+# NIfTI input file
+ANATOMICAL=$(find ${ANAT_DIR}/* -name "*.nii*")
 
-  # NIfTI input file
-  ANATOMICAL=$(find ${ANAT_DIR}/* -name "*.nii*")
+# DICOM archive
+if [[ -z "${ANATOMICAL}" ]]; then
+  ANATOMICAL=$(find $INPUT_DIR/* -not -path '*/\.*' -type f | head -1)
 
-  # DICOM archive
+  # Handle Zip archive or uncompressed volume
+  if [[ "${ANATOMICAL}" == *.zip ]]; then
+    echo "$CONTAINER  Unzipping $ANATOMICAL"
+    DICOM_DIR="${ANAT_DIR}"/dicoms
+    mkdir ${DICOM_DIR}
+    unzip -q "${ANATOMICAL}" -d ${DICOM_DIR}
+
+    # Get the 'despaced' path to the first dicom file for input to recon-all
+    despacer "${DICOM_DIR}"
+    ANATOMICAL=$(find ${DICOM_DIR}/* -not -path '*/\.*' -type f | head -1)
+  fi
+
+  # Final check for anatomical file
   if [[ -z "${ANATOMICAL}" ]]; then
-    ANATOMICAL=$(find $INPUT_DIR/* -not -path '*/\.*' -type f | head -1)
-
-    # Handle Zip archive or uncompressed volume
-    if [[ "${ANATOMICAL}" == *.zip ]]; then
-      echo "$CONTAINER  Unzipping $ANATOMICAL"
-      DICOM_DIR="${ANAT_DIR}"/dicoms
-      mkdir ${DICOM_DIR}
-      unzip -q "${ANATOMICAL}" -d ${DICOM_DIR}
-
-      # Get the 'despaced' path to the first dicom file for input to recon-all
-      despacer "${DICOM_DIR}"
-      ANATOMICAL=$(find ${DICOM_DIR}/* -not -path '*/\.*' -type f | head -1)
-    fi
-
-    # Final check for anatomical file
-    if [[ -z "${ANATOMICAL}" ]]; then
-      echo "$CONTAINER  Anatomical input could not be found in $ANAT_DIR! Exiting (1)"
-      ls -lRa ${ANAT_DIR}
-      exit 1
-    fi
-  fi
-
-  # Proccess additoinal anatomical inputs
-  ADD_INPUTS=''
-  ANAT_DIRS=$(echo -e $ANAT_DIR_2 $ANAT_DIR_3 $ANAT_DIR_4 $ANAT_DIR_5)
-  for ad in $ANAT_DIRS; do
-    if [ -d ${ad} ]; then
-      despacer ${ad}
-      ANATOMICAL2=$(find ${ad}/* -name "*.nii*")
-      if [[ -f "$ANATOMICAL2" ]]; then
-        echo "Adding $ANATOMICAL2 to the processing stream..."
-        ADD_INPUTS=$ADD_INPUTS' -i '"$ANATOMICAL2"
-      fi
-    fi
-  done
-
-  # T2 input file
-  if [[ -d ${T2_DIR} ]]; then
-    despacer ${T2_DIR}
-    T2_ANAT=$(find ${T2_DIR}/* -name "*.nii*")
-    if [[ -f "$T2_ANAT" ]]; then
-      ADD_INPUTS=$ADD_INPUTS' -T2 '"$T2_ANAT"' -T2pial '
-    fi
-  fi
-
-
-  ###############################################################################
-  # Run Freesurfer-Recon-all
-
-  # Run recon-all
-  echo -e "Running recon all..."
-  command=$(echo -e "time recon-all -i "${ANATOMICAL}" "${ADD_INPUTS}" -subjid "${SUBJECT_ID}" ${RECON_ALL_OPTS}")
-  echo -e "${command}"
-  eval $command
-
-  if [[ $? != 0 ]]; then
-    echo "$CONTAINER  recon-all failure! Exiting (1)"
+    echo "$CONTAINER  Anatomical input could not be found in $ANAT_DIR! Exiting (1)"
+    ls -lRa ${ANAT_DIR}
     exit 1
   fi
+fi
+
+# Proccess additional anatomical inputs
+ADD_INPUTS=''
+ANAT_DIRS=$(echo -e $ANAT_DIR_2 $ANAT_DIR_3 $ANAT_DIR_4 $ANAT_DIR_5)
+for ad in $ANAT_DIRS; do
+  if [ -d ${ad} ]; then
+    despacer ${ad}
+    ANATOMICAL2=$(find ${ad}/* -name "*.nii*")
+    if [[ -f "$ANATOMICAL2" ]]; then
+      echo "Adding $ANATOMICAL2 to the processing stream..."
+      ADD_INPUTS=$ADD_INPUTS' -i '"$ANATOMICAL2"
+    fi
+  fi
+done
+
+# T2 input file
+if [[ -d ${T2_DIR} ]]; then
+  despacer ${T2_DIR}
+  T2_ANAT=$(find ${T2_DIR}/* -name "*.nii*")
+  if [[ -f "$T2_ANAT" ]]; then
+    ADD_INPUTS=$ADD_INPUTS' -T2 '"$T2_ANAT"' -T2pial '
+  fi
+fi
+
+
+###############################################################################
+# Run Freesurfer-Recon-all
+if [[  ${RECON_ALL_OPTS} == "False" ]];then
+  echo -e "recon all is false, skipping it"
+  echo -e "checking if the old freesurfer-recon-all*.zip is there"
+  FS_ARCHIVE=$(find ${OUTPUT_DIR}/* -name "freesurfer-recon-all*.zip")
+  if [[ -f "$FS_ARCHIVE" ]]; then
+      echo -e "unzipping old recon-all*.zip"
+      unzip -foq "${FS_ARCHIVE}" -d ${OUTPUT_DIR}
+  else
+      echo -e "$CONTAINER We cannot find existing .zip file"
+      echo "$CONTAINER  GEAR FAILED... Exiting(1)"
+      exit 1
+  fi
+  echo -e "linking SUBJECTS_DIR directory to freesurfer"
+  ln -sfn ${OUTPUT_DIR}/${SUBJECT_ID} ${SUBJECTS_DIR}/"${SUBJECT_ID}"
+  else 
+# Run recon-all
+    echo -e "Running recon all..."
+    command=$(echo -e "time recon-all -i "${ANATOMICAL}" "${ADD_INPUTS}" -subjid "${SUBJECT_ID}" ${RECON_ALL_OPTS}")
+    echo -e "${command}"
+    eval $command
+fi
+if [[ $? != 0 ]]; then
+  echo "$CONTAINER  recon-all failure! Exiting (1)"
+  exit 1
 fi
 
 ###############################################################################
@@ -210,22 +189,134 @@ fi
 
 MRI_DIR=${SUBJECTS_DIR}/"${SUBJECT_ID}"/mri
 
+# Segmentation of Cerebellum 
+if [[ ${CEREBELLUM} == "True" ]]; then
+  echo -e "$CONTAINER starting segmentation of cerebellum"
+  # Create binary mask of brainmask.mgz and MNI_152
+  mri_convert ${MRI_DIR}/brainmask.mgz ${MRI_DIR}/brainmask.nii.gz
+  mri_binarize --min 0.1 --i ${MRI_DIR}/brainmask.mgz --o ${MRI_DIR}/binbrainmask.nii.gz
+  mri_binarize --min 0.1 --i ${TEMPLATES}/MNI_152.nii.gz --o ${MRI_DIR}/binMNI_152.nii.gz
+  # calculate the transformation
+  antsRegistration -d 3 -v 0                 									\
+		-o ${MRI_DIR}/ants																	\
+		-r [${MRI_DIR}/binbrainmask.nii.gz,${MRI_DIR}/binMNI_152.nii.gz,1] 		\
+		-t Syn[0.1, 3, 0]														\
+		-c [100x75x20x0, 0, 10]													\
+		-m CC[${MRI_DIR}/brainmask.nii.gz, ${TEMPLATES}/MNI_152.nii.gz,1,4]		\
+		-f 4x3x2x1																\
+		-s 1x1x0x0																\
+		-x [${MRI_DIR}/binbrainmask.nii.gz, ${MRI_DIR}/binMNI_152.nii.gz]
+  # apply both affine and nonlinear transofrmation
+  antsApplyTransforms -d 3 														\
+		-i ${TEMPLATES}/Buckner_CB.nii.gz									\
+		-r ${MRI_DIR}/brainmask.nii.gz											\
+		-n Linear																\
+		-t ${MRI_DIR}/ants1Warp.nii.gz											\
+		-t ${MRI_DIR}/ants0GenericAffine.mat									\
+		-o ${MRI_DIR}/buckner2011_cerebellum.nii.gz
+  # copy it to output dir
+  mv ${MRI_DIR}/buckner2011_cerebellum.nii.gz \
+			${OUTPUT_DIR}/buckner2011_cerebellum.nii.gz
+fi
+if [[ ! -d $ROIs ]]; then
+  mkdir ${OUTPUT_DIR}/ROIs
+fi
+# transform MORI to native space
+if [[ ${MORI} == "True" ]]; then
+  echo -e "$CONTRAINER starting transform MORI"
+  if [[ ${CEREBELLUM} != "True" ]]; then
+	# Create binary mask of brainmask.mgz and MNI_152
+    mri_convert  ${MRI_DIR}/brainmask.mgz ${MRI_DIR}/brainmask.nii.gz
+    mri_binarize --min 0.1 --i ${MRI_DIR}/brainmask.mgz --o ${MRI_DIR}/binbrainmask.nii.gz
+    mri_binarize --min 0.1 --i ${TEMPLATES}/MNI_152.nii.gz --o ${MRI_DIR}/binMNI_152.nii.gz
+    # calculate the transformation
+    antsRegistration -d 3 -v 0                 									\
+		-o ${MRI_DIR}/ants																	\
+		-r [${MRI_DIR}/binbrainmask.nii.gz,${MRI_DIR}/binMNI_152.nii.gz,1] 		\
+		-t Syn[0.1, 3, 0]														\
+		-c [100x75x20x0, 0, 10]													\
+		-m CC[${MRI_DIR}/brainmask.nii.gz, ${TEMPLATES}/MNI_152.nii.gz,1,4]		\
+		-f 4x3x2x1																\
+		-s 1x1x0x0																\
+		-x [${MRI_DIR}/binbrainmask.nii.gz, ${MRI_DIR}/binMNI_152.nii.gz]
+  fi
+  for ROI in `ls ${MORI_DIR}/*`; do
+    ROIname=$(basename -- "$ROI"); ROIname="${ROIname%.nii.gz}"  
+    antsApplyTransforms -d 3 														\
+		-i ${MORI_DIR}/${ROIname}.nii.gz									\
+		-r ${MRI_DIR}/brainmask.nii.gz											\
+		-n Linear																\
+		-t ${MRI_DIR}/ants1Warp.nii.gz											\
+		-t ${MRI_DIR}/ants0GenericAffine.mat									\
+		-o ${MRI_DIR}/MORI_${ROIname}.nii.gz
+    
+    mri_binarize --min 0.1 --i ${MRI_DIR}/MORI_${ROIname}.nii.gz \
+						--o ${OUTPUT_DIR}/ROIs/${ROIname}.nii.gz
+    rm ${MRI_DIR}/MORI_${ROIname}.nii.gz 
+  done
+fi
+ 	
+export LD_LIBRARY_PATH=/opt/freesurfer/MCRv84/runtime/glnxa64:/opt/freesurfer/MCRv84/bin/glnxa64:/opt/freesurfer/MCRv84/sys/os/glnxa64:/opt/freesurfer/MCRv84/sys/java/jre/glnxa64/jre/lib/amd64/native_threads:/opt/freesurfer/MCRv84/sys/java/jre/glnxa64/jre/lib/amd64/server:/opt/freesurfer/MCRv84/sys/java/jre/glnxa64/jre/lib/amd64
+
+
 # Segmentation of hippocampal subfields
 if [[ ${HIPPOCAMPUS} == "True" ]]; then
-  echo -e "$CONTAINER  Starting segmentation of hippicampal subfields..."
-  recon-all -subjid "${SUBJECT_ID}" -hippocampal-subfields-T1
-  quantifyHippocampalSubfields.sh T1 "${MRI_DIR}"/HippocampalSubfields.txt
+  echo -e "$CONTAINER  Starting segmentation of hippocampal subfields..."
+  # OLD: recon-all -subjid "${SUBJECT_ID}" -hippocampal-subfields-T1
+  # DEV:
+  segmentHA_T1.sh "${SUBJECT_ID}"
+
+  # if T2 input file
+  if [[ -f "$T2_ANAT" ]]; then
+    segmentHA_T2.sh "${SUBJECT_ID}" ${MRI_DIR}/T2.mgz 0 1
+  fi
+
+  # Longitudinal Processing of Hippocampus: NOT PERFORMING
+  # segmentHA_T1_long.sh "${SUBJECT_ID}"
+  # OLD: 
+  # quantifyHippocampalSubfields.sh T1 "${MRI_DIR}"/HippocampalSubfields.txt
+  # DEV:
+  quantifyHAsubregions.sh hippoSf T1 "${MRI_DIR}"/HippocampalSubfields.txt ${SUBJECTS_DIR}
+  quantifyHAsubregions.sh amygNuc T1 "${MRI_DIR}"/AmygdalaNuclei.txt ${SUBJECTS_DIR}
+  # TODO: This is going to have to be parsed out.
   tr ' ' ',' <"${MRI_DIR}"/HippocampalSubfields.txt >${OUTPUT_DIR}/"${SUBJECT_ID}"_HippocampalSubfields.csv
+  tr ' ' ',' <"${MRI_DIR}"/AmygdalaNuclei.txt >${OUTPUT_DIR}/"${SUBJECT_ID}"_AmygdalaNuclei.csv
 fi
 
 # Brainstem Substructures
 if [[ ${BRAINSTEM} == "True" ]]; then
   echo -e "$CONTAINER  Starting segmentation of brainstem structures..."
-  recon-all -subjid "${SUBJECT_ID}" -brainstem-structures
+  # OLD: recon-all -subjid "${SUBJECT_ID}" -brainstem-structures
+  # DEV: 
+  segmentBS.sh "${SUBJECT_ID}"
   quantifyBrainstemStructures.sh "${MRI_DIR}"/BrainstemStructures.txt
   tr ' ' ',' <"${MRI_DIR}"/BrainstemStructures.txt >${OUTPUT_DIR}/"${SUBJECT_ID}"_BrainstemStructures.csv
 fi
 
+# Thalamic Nuclei
+if [[ ${THALAMUS} == "True" ]]; then
+    echo -e "$CONTAINER  Starting segmentation of thalamic nuclei..."
+    segmentThalamicNuclei.sh "${SUBJECT_ID}"
+    # With nightly builds, "${MRI_DIR}"/ThalamicNuclei.${SUFFIX}.T1.volumes.txt
+    # ${SUFFIX} is unstable
+    ln -sfn "${MRI_DIR}"/ThalamicNuclei.*.T1.volumes.txt "${MRI_DIR}"/ThalamicNuclei.T1.volumes.txt
+    tr ' ' ',' <"${MRI_DIR}"/ThalamicNuclei.T1.volumes.txt >${OUTPUT_DIR}/"${SUBJECT_ID}"_ThalamicNuclei.T1.volumes.csv
+
+fi
+
+export LD_LIBRARY_PATH=""
+
+# Neuropythy retino-template algorithm
+if [[ ${NEUROPYTHY} == "True" ]]; then
+    echo -e "$CONTAINER  Starting Neuropythy retino-template ..."
+    # Matlab installation interfers with neuropythy execution.
+    SAVE_LD_LIBRARY_PATH=$LD_LIBRARY_PATH
+    export LD_LIBRARY_PATH=
+    
+    python -m neuropythy atlas --verbose --volume-export "${SUBJECT_ID}"
+    
+    export LD_LIBRARY_PATH=$SAVE_LD_LIBRARY_PATH
+fi
 ###############################################################################
 # Optional registrations
 
@@ -279,13 +370,40 @@ if [[ $CONVERT_VOLUMES == "True" ]]; then
                  T1.mgz'
 
   if [[ ${HIPPOCAMPUS} == "True" ]]; then
-    mri_mgz_files="$mri_mgz_files
-                    lh.hippoSfLabels-T1.v10.FSvoxelSpace.mgz
-                    rh.hippoSfLabels-T1.v10.FSvoxelSpace.mgz"
+    # Create a symbolic link to the development version of this output specified
+    # by ${SUFFIX} in 
+    # rh.hippoSfLabels-T1.${SUFFIX}.FSvoxelSpace.mgz"
+
+    ln -sfn `ls "${MRI_DIR}"/lh.hippoAmygLabels-T1.*.FSvoxelSpace.mgz | egrep 'T1.v[0-9]+.FSvox'` "${MRI_DIR}"/lh.hippoAmygLabels-T1.FSvoxelSpace.mgz
+    ln -sfn `ls "${MRI_DIR}"/rh.hippoAmygLabels-T1.*.FSvoxelSpace.mgz | egrep 'T1.v[0-9]+.FSvox'` "${MRI_DIR}"/rh.hippoAmygLabels-T1.FSvoxelSpace.mgz
+    mri_mgz_files="$mri_mgz_files 
+                   lh.hippoAmygLabels-T1.FSvoxelSpace.mgz
+                   rh.hippoAmygLabels-T1.FSvoxelSpace.mgz"
   fi
 
   if [[ ${BRAINSTEM} == "True" ]]; then
-    mri_mgz_files="$mri_mgz_files brainstemSsLabels.v10.FSvoxelSpace.mgz"
+    # Create a symbolic link to the development version of this output specified
+    # by ${SUFFIX} in 
+    # brainstemSsLabels.${SUFFIX}.FSvoxelSpace.mgz
+    ln -sfn "${MRI_DIR}"/brainstemSsLabels.*.FSvoxelSpace.mgz "${MRI_DIR}"/brainstemSsLabels.FSvoxelSpace.mgz
+    mri_mgz_files="$mri_mgz_files brainstemSsLabels.FSvoxelSpace.mgz"
+  fi
+
+  if [[ ${THALAMUS} == "True" ]]; then
+    # Create a symbolic link to the development version of this output specified
+    # by ${SUFFIX} in 
+    # ThalamicNuclei.${SUFFIX}.T1.FSvoxelSpace.mgz
+    ln -sfn "${MRI_DIR}"/ThalamicNuclei.*.T1.FSvoxelSpace.mgz "${MRI_DIR}"/ThalamicNuclei.T1.FSvoxelSpace.mgz
+    mri_mgz_files="$mri_mgz_files ThalamicNuclei.T1.FSvoxelSpace.mgz"
+  fi
+
+  if [[ ${NEUROPYTHY} == "True" ]]; then
+    mri_mgz_files="$mri_mgz_files 
+                   wang15_mplbl.mgz
+                   benson14_varea.mgz
+                   benson14_eccen.mgz
+                   benson14_sigma.mgz
+                   benson14_angle.mgz"
   fi
 
   echo -e "$CONTAINER  Converting volumes to NIfTI files..."
@@ -293,6 +411,31 @@ if [[ $CONVERT_VOLUMES == "True" ]]; then
     mri_convert -i "${MRI_DIR}"/$i -o ${OUTPUT_DIR}/`basename $i .mgz`.nii.gz
   done
 
+fi
+
+##############################################################################
+# Write ROIs separately into individual files
+# Cerebellum
+if [[ ${CEREBELLUM} == "True" ]]; then
+	${FLYWHEEL_BASE}/separateROIs.py -cb ${OUTPUT_DIR}/buckner2011_cerebellum.nii.gz 
+fi
+
+# Thalamic Nuclei
+if [[ ${THALAMUS} == "True" ]]; then
+	# separate nuclei from the ThalamicNuclei.T1.FSvoxelSpace.nii.gz
+	# separate ROIs
+	${FLYWHEEL_BASE}/separateROIs.py -ThN ${OUTPUT_DIR}/ThalamicNuclei.T1.FSvoxelSpace.nii.gz \
+									 -ThLUT ${TEMPLATES}/FreesurferColorLUT_THALAMUS.txt 
+	
+fi
+
+if [[ ${NEUROPYTHY} == "True" ]]; then
+	${FLYWHEEL_BASE}/separateROIs.py -benV ${OUTPUT_DIR}/benson14_varea.nii.gz
+
+fi
+
+if [[ ${APARC2009} == "True" ]]; then
+	${FLYWHEEL_BASE}/separateROIs.py -aparc2009 ${OUTPUT_DIR}/aparc.a2009s+aseg.nii.gz	
 fi
 
 ###############################################################################
@@ -316,6 +459,19 @@ if [[ $ASEG_CSV == "True" ]]; then
           --tablefile="${OUTPUT_DIR}/${SUBJECT_ID}_${h}_${p}_stats_area_mm2.csv"
       done
     done
+
+    if [[ ${THALAMUS} == "True" ]]; then
+        for h in $hemi; do
+            # Create a symbolic link to the development version of this output specified
+            # by ${SUFFIX} in 
+            # thalamic-nuclei.${h}.${SUFFIX}.T1.stats
+            ln -sfn ${SUBJECTS_DIR}/${SUBJECT_ID}/stats/thalamic-nuclei.${h}.*.T1.stats ${SUBJECTS_DIR}/${SUBJECT_ID}/stats/thalamic-nuclei.${h}.T1.stats
+            asegstats2table -s "${SUBJECT_ID}" \
+              --delimiter=comma \
+              --statsfile=thalamic-nuclei.${h}.T1.stats \
+              --tablefile="${OUTPUT_DIR}/${SUBJECT_ID}_thalamic-nuclei.${h}.T1.csv"
+        done
+    fi
 fi
 
 

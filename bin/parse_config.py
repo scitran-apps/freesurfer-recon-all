@@ -3,35 +3,21 @@
 # Parse config.json and return strings that can be passed back to the calling
 # function.
 #
-import argparse
-import json
-import multiprocessing as mp
-import os
-import os.path as op
-import zipfile
 
-import flywheel
-
-
+# Parse config file
 def parse_config(args):
-    """
-    parse_config Parses the config.json file
-
-    Args:
-        args (argparse.Namespace): The namespace of arguments to parse
-
-    Raises:
-        SystemExit: If the config.json file does not exist, exit.
-    """
+    import json
+    import os
+    import zipfile
 
     # If the config file does not exist then exit
     if not os.path.isfile(args.json_file):
         raise SystemExit('File does not exist: %s!' % args.json_file)
 
     if args.json_file.endswith('manifest.json'):
-        manifest = True
+        manifest=True
     else:
-        manifest = False
+        manifest=False
 
     # Read the config json file
     with open(args.json_file, 'r') as jsonfile:
@@ -45,10 +31,6 @@ def parse_config(args):
         for k in default_config.iterkeys():
             if default_config[k].has_key('default'):
                 config['config'][k] = default_config[k]['default']
-    else:
-        context = flywheel.GearContext(
-            gear_path=op.dirname(args.json_file)
-        )
 
     if args.i:
         if not config['config'].has_key('subject_id'):
@@ -58,16 +40,7 @@ def parse_config(args):
 
     # Print options for recon-all
     if args.o:
-        option_string = config['config']['reconall_options']
-        if context.config['parallel']:
-            option_string += ' -parallel '
-            if context.config['n_cpus'] is not 4:
-                max_cpus = mp.cpu_count()
-                if context.config['n_cpus'] < max_cpus:
-                    option_string += '-openmp ' + str(context.config['n_cpus'])
-                else:
-                    option_string += '-openmp ' + str(max_cpus)
-        print(option_string)
+        print(config['config']['reconall_options'])
 
     # Print options for recon-all
     if args.r:
@@ -89,79 +62,63 @@ def parse_config(args):
     if args.c:
         print(config['config']['hippocampal_subfields'])
 
+    # Process cerebellum segmentation
+    if args.e:
+        print(config['config']['cerebellum'])
+
+    # Process MORI transformation
+    if args.m:
+        print(config['config']['mori'])
+
     # Process brainstem substructures
     if args.b:
         print(config['config']['brainstem_structures'])
 
+    # Process thalamic nuclei
+    if args.t:
+        print(config['config']['thalamic_nuclei'])
+    # Process neuropythy commands    
+    if args.p:
+        print(config['config']['neuropythy_analysis'])
+    # separate aparcaseg ROIs
+    if args.aparc2009:
+        print(config['config']['aparc2009'])
+
     # Get subject code from archive input
     if args.z:
         try:
-            zip = zipfile.ZipFile(
-                config['inputs']['anatomical']['location']['path'])
+            zip = zipfile.ZipFile(config['inputs']['anatomical']['location']['path'])
             print(zip.namelist()[0].split('/')[0])
         except:
             print('')
 
     # Parse config for license elements
     if args.l:
-        # This will look for project level and input level freesurfer license
-        # files
-
-        # grab input, config, and project in order they are checked
-        fs_license_file = context.get_input_path('freesurfer_license_file')
-
-        fs_license = context.config.get('freesurfer_license')
-
-        fw = context.client
-        destination_id = context.destination.get('id')
-        project_id = fw.get_analysis(destination_id).parents.project
-        project = fw.get_project(project_id)
-        project_license = project.get_file('license.txt')
-        # Check the inputs for the license file
-        if fs_license_file:
-            print(open(fs_license_file, 'r').read())
-        # else use the space-delimited config
-        elif fs_license:
-            print(fs_license.replace(" ", "\\n"))
-        # else look for it in the associated project
-        elif project_license:
-            local_license = op.join(context.work_dir, 'license.txt')
-            project.download_file('license.txt', local_license)
-            print(open(local_license, 'r').read())
-        # else we don't have one... and give an error in the bash script
-        else:
+        if not config['config'].has_key('freesurfer_license'):
             print("")
+        else:
+            print(' '.join(config['config']['freesurfer_license'].split()).replace(" ", "\\n"))
 
+if __name__ == '__main__':
 
-# This works better for testing
-def main():
+    import argparse
     ap = argparse.ArgumentParser()
-    ap.add_argument('--json_file', type=str, dest="json_file",
-                    help='Full path to the input json config file.')
+    ap.add_argument('--json_file', type=str, dest="json_file", help='Full path to the input json config file.')
     ap.add_argument('-i', action='store_true', help='Return subject ID')
-    ap.add_argument('-p', action='store_true', help='Recon-All -parallel flag')
-    ap.add_argument('-N', type=str, dest='n_cpus',
-                    help='Sets the -openmp <num> flag, where <num> is the number of processors to use')
-    ap.add_argument('-o', action='store_true',
-                    help='Return Recon-All Options')
-    ap.add_argument('-s', action='store_true',
-                    help='Convert surfaces to obj')
-    ap.add_argument('-n', action='store_true',
-                    help='Convert volume MGZ to NIfTI')
-    ap.add_argument('-a', action='store_true',
-                    help='Convert ASEG stats to csv')
-    ap.add_argument('-l', action='store_true',
-                    help='Generate License File')
-    ap.add_argument('-c', action='store_true',
-                    help='Hippocampal subfields')
+    ap.add_argument('-o', action='store_true', help='Return Recon-All Options')
+    ap.add_argument('-s', action='store_true', help='Convert surfaces to obj')
+    ap.add_argument('-n', action='store_true', help='Convert volume MGZ to NIfTI')
+    ap.add_argument('-a', action='store_true', help='Convert ASEG stats to csv')
+    ap.add_argument('-l', action='store_true', help='Generate License File')
+    ap.add_argument('-c', action='store_true', help='Hippocampal subfields')
     ap.add_argument('-b', action='store_true', help='Brainstem processing')
+    ap.add_argument('-t', action='store_true', help='Thalamus processing')
+    ap.add_argument('-e', action='store_true', help='cerebellum processing')
+    ap.add_argument('-m', action='store_true', help='transform mori rois')
+    ap.add_argument('-p', action='store_true', help='Neuropythy processing')
     ap.add_argument('-r', action='store_true', help='Surface registration')
-    ap.add_argument('-z', action='store_true',
-                    help='Get sub code from zip input')
+    ap.add_argument('-z', action='store_true', help='Get sub code from zip input')
+    ap.add_argument('-aparc2009', action='store_true', help='separate aparc.a2009 ROIs')
     args = ap.parse_args()
 
     parse_config(args)
-
-
-if __name__ == '__main__':
-    main()
