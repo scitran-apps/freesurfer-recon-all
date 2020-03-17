@@ -58,7 +58,7 @@ ANAT_DIR_3=${INPUT_DIR}/t1w_anatomical_3
 ANAT_DIR_4=${INPUT_DIR}/t1w_anatomical_4
 ANAT_DIR_5=${INPUT_DIR}/t1w_anatomical_5
 T2_DIR=${INPUT_DIR}/t2w_anatomical
-LICENSE_FILE=${FREESURFER_HOME}/.license
+LICENSE_FILE=${FREESURFER_HOME}/license.txt
 
 
 ###############################################################################
@@ -75,7 +75,9 @@ fi
 if [[ ! -f ${LICENSE_FILE} ]]; then
   LICENSE=$(${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -l)
   if [[ -z $LICENSE ]]; then
-    echo "NO LICENSE INFORMATION FOUND! Exiting(1)"
+    echo "LICENSE INFORMATION NOT FOUND!"
+    echo "Please check inputs and project level files."
+    echo "Exiting(1)"
     exit 1
   fi
   echo -e ${LICENSE} > ${LICENSE_FILE}
