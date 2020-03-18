@@ -21,6 +21,8 @@ If you would like to use specific options in a local run of this gear you can mo
 ### Recent Updates
 Recent updates (3/2020) grant control over `recon-all` paralellization.  The `-parallel` flag is set to run certain stages of `recon-all` on all available computational cores.  To limit the number of cores set `n_cpus` to the desired number.
 
+Also, if a `subject_id` is not provided the subject label will be retrieved from the session the gear is running in.
+
 ### Example Local Usage ###
 This Gear is designed to run within [Flywheel](https://flywheel.io), however you can run this Gear locally. To run ```recon-all``` from this image you can do the following:
 ```
