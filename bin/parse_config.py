@@ -49,12 +49,16 @@ def parse_config(args):
         context = flywheel.GearContext(
             gear_path=op.dirname(args.json_file)
         )
+        fw = context.client
+        destination_id = context.destination.get('id')
 
     if args.i:
-        if not config['config'].get('subject_id'):
-            print('s0000')
-        else:
+        if context.config.get('subject_id'):
             print(config['config']['subject_id'])
+        else:
+            subject_id = fw.get_analysis(destination_id).parents.subject
+            subject = fw.get(subject_id)
+            print(subject.label)
 
     # Print options for recon-all
     if args.o:
@@ -122,8 +126,6 @@ def parse_config(args):
         # from config:
         fs_license = context.config.get('freesurfer_license')
         # from project (needs api-key in config.json/manifest.json):
-        fw = context.client
-        destination_id = context.destination.get('id')
         project_id = fw.get_analysis(destination_id).parents.project
         project = fw.get_project(project_id)
         project_license = project.get_file('license.txt')
