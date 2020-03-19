@@ -120,15 +120,19 @@ def parse_config(args):
         # This will look for project level and input level freesurfer license
         # files
 
-        # grab input, config, and project in order they are checked
+        # grab input, config, project file, and project metadata in order
+        # they are checked
         # from input:
         fs_license_file = context.get_input_path('freesurfer_license_file')
         # from config:
         fs_license = context.config.get('freesurfer_license')
-        # from project (needs api-key in config.json/manifest.json):
+        # from project file attachments:
         project_id = fw.get_analysis(destination_id).parents.project
         project = fw.get_project(project_id)
         project_license = project.get_file('license.txt')
+        # from project metadata
+        fs_license_info = project.info.get('FREESURFER_LICENSE')
+
         # Check for freesurfer license in precedence order:
         # Check the inputs for the license file
         if fs_license_file:
@@ -136,11 +140,14 @@ def parse_config(args):
         # else use the space-delimited config
         elif fs_license:
             print(fs_license.replace(" ", "\\n"))
-        # else look for it in the associated project
+        # else look for it in the associated project file attachments
         elif project_license:
             local_license = op.join(context.work_dir, 'license.txt')
             project.download_file('license.txt', local_license)
             print(open(local_license, 'r').read())
+        # else look for it in the project metadata
+        elif fs_license_info:
+            print(fs_license.replace(" ", "\\n"))
         # else we don't have one... and give an error in the bash script
         else:
             print("")
