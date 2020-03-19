@@ -5,10 +5,11 @@
 This build context will create an image built to the [Flywheel Gear Specification](https://github.com/flywheel-io/gears/tree/master/spec), which can execute Freesurfer's `recon-all` (**v6.0.1**) within [Flywheel](https://flywheel.io), or locally.
 
 * You *MUST* read and agree to the license agreement and [register with MGH before you use the software](https://surfer.nmr.mgh.harvard.edu/registration.html).
-* Once you get your license you can apply this license in one of three ways (order of precedence):
-    1. Browse to an instance of `license.txt` stored at any level of the Flywheel container hierarchy from the input `freesurfer_license_file`
+* Once you get your license you can apply this license in one of four ways (see this [article](https://docs.flywheel.io/hc/en-us/articles/360013235453-How-to-include-a-Freesurfer-license-file-in-order-to-run-a-Freesurfer-or-fMRIPrep-gear-) for specifics):
+    1. Browse to an instance of `license.txt` stored at any level of the Flywheel container hierarchy from the input `freesurfer_license_file`.
     2. Enter a space-delimited version of the license in the configuration `freesurfer_license`
     3. Ensure that `license.txt` is a file at the project level.
+    4. Ensure that a space-delimited version of the license, `FREESURFER_LICENSE`, is placed within the project context.
 * This image is built with the Matlab MCRv80 included. The MCR is required to run the optional Hippocampal Subfields and Brainstem Structures processing (see [`manifest.json`](manifest.json)).
 * The resulting image is ~12GB and builds in ~15min.
 
