@@ -5,7 +5,7 @@
 #
 # https://surfer.nmr.mgh.harvard.edu/fswiki/ReconAllOutputFiles
 
-GEAR=freesurfer-recon-all
+GEAR=freesurfer-recon-all-dev
 REPO=scitran
 CONTAINER="[${REPO}/$GEAR]"
 
@@ -59,7 +59,8 @@ T2_DIR=${INPUT_DIR}/t2w_anatomical
 LICENSE_FILE=${FREESURFER_HOME}/.license
 TEMPLATES=${FLYWHEEL_BASE}/templates
 MORI_DIR=${FLYWHEEL_BASE}/templates/MNI_JHU_tracts_ROIs
-ROIs=${OUTPUT_DIR}/ROIs
+FS_DIR=${OUTPUT_DIR}/fs
+ROIs_DIR=${OUTPUT_DIR}/fs/ROIs
 
 ###############################################################################
 # Parse Configuration and Set Options
@@ -163,8 +164,8 @@ if [[  ${RECON_ALL_OPTS} == "False" ]];then
   echo -e "checking if the old freesurfer-recon-all*.zip is there"
   FS_ARCHIVE=$(find ${OUTPUT_DIR}/* -name "freesurfer-recon-all*.zip")
   if [[ -f "$FS_ARCHIVE" ]]; then
-      echo -e "unzipping old recon-all*.zip"
-      unzip -foq "${FS_ARCHIVE}" -d ${OUTPUT_DIR}
+      echo -e "unzipping existing ${FS_ARCHIVE}"
+      unzip -oq "${FS_ARCHIVE}" -d "${OUTPUT_DIR}"
   else
       echo -e "$CONTAINER We cannot find existing .zip file"
       echo "$CONTAINER  GEAR FAILED... Exiting(1)"
@@ -188,6 +189,14 @@ fi
 # Optional Segmentations
 
 MRI_DIR=${SUBJECTS_DIR}/"${SUBJECT_ID}"/mri
+
+if [[ ! -d $FS_DIR ]]; then
+  mkdir ${FS_DIR}
+fi
+
+if [[ ! -d $ROIs_DIR ]]; then
+  mkdir ${ROIs_DIR}
+fi
 
 # Segmentation of Cerebellum 
 if [[ ${CEREBELLUM} == "True" ]]; then
@@ -217,9 +226,6 @@ if [[ ${CEREBELLUM} == "True" ]]; then
   # copy it to output dir
   mv ${MRI_DIR}/buckner2011_cerebellum.nii.gz \
 			${OUTPUT_DIR}/buckner2011_cerebellum.nii.gz
-fi
-if [[ ! -d $ROIs ]]; then
-  mkdir ${OUTPUT_DIR}/ROIs
 fi
 # transform MORI to native space
 if [[ ${MORI} == "True" ]]; then
@@ -251,7 +257,7 @@ if [[ ${MORI} == "True" ]]; then
 		-o ${MRI_DIR}/MORI_${ROIname}.nii.gz
     
     mri_binarize --min 0.1 --i ${MRI_DIR}/MORI_${ROIname}.nii.gz \
-						--o ${OUTPUT_DIR}/ROIs/${ROIname}.nii.gz
+						--o ${ROIs_DIR}/${ROIname}.nii.gz
     rm ${MRI_DIR}/MORI_${ROIname}.nii.gz 
   done
 fi
@@ -409,33 +415,40 @@ if [[ $CONVERT_VOLUMES == "True" ]]; then
   echo -e "$CONTAINER  Converting volumes to NIfTI files..."
   for i in $mri_mgz_files; do
     mri_convert -i "${MRI_DIR}"/$i -o ${OUTPUT_DIR}/`basename $i .mgz`.nii.gz
+    mri_convert -i "${MRI_DIR}"/$i -o ${FS_DIR}/`basename $i .mgz`.nii.gz
   done
 
 fi
 
 ##############################################################################
 # Write ROIs separately into individual files
+cp ${OUTPUT_DIR}/aparc+aseg.nii.gz   ${FS_DIR}/aparc+aseg.nii.gz
+
 # Cerebellum
 if [[ ${CEREBELLUM} == "True" ]]; then
-	${FLYWHEEL_BASE}/separateROIs.py -cb ${OUTPUT_DIR}/buckner2011_cerebellum.nii.gz 
+	cp ${OUTPUT_DIR}/buckner2011_cerebellum.nii.gz ${FS_DIR}/buckner2011_cerebellum.nii.gz 
+	${FLYWHEEL_BASE}/separateROIs.py -cb ${FS_DIR}/buckner2011_cerebellum.nii.gz 
 fi
 
 # Thalamic Nuclei
 if [[ ${THALAMUS} == "True" ]]; then
 	# separate nuclei from the ThalamicNuclei.T1.FSvoxelSpace.nii.gz
 	# separate ROIs
-	${FLYWHEEL_BASE}/separateROIs.py -ThN ${OUTPUT_DIR}/ThalamicNuclei.T1.FSvoxelSpace.nii.gz \
+	cp ${OUTPUT_DIR}/ThalamicNuclei.T1.FSvoxelSpace.nii.gz ${FS_DIR}/ThalamicNuclei.T1.FSvoxelSpace.nii.gz \
+	${FLYWHEEL_BASE}/separateROIs.py -ThN ${FS_DIR}/ThalamicNuclei.T1.FSvoxelSpace.nii.gz \
 									 -ThLUT ${TEMPLATES}/FreesurferColorLUT_THALAMUS.txt 
 	
 fi
 
 if [[ ${NEUROPYTHY} == "True" ]]; then
-	${FLYWHEEL_BASE}/separateROIs.py -benV ${OUTPUT_DIR}/benson14_varea.nii.gz
+	cp ${OUTPUT_DIR}/benson14_varea.nii.gz  ${FS_DIR}/benson14_varea.nii.gz
+	${FLYWHEEL_BASE}/separateROIs.py -benV ${FS_DIR}/benson14_varea.nii.gz
 
 fi
 
 if [[ ${APARC2009} == "True" ]]; then
-	${FLYWHEEL_BASE}/separateROIs.py -aparc2009 ${OUTPUT_DIR}/aparc.a2009s+aseg.nii.gz	
+	cp ${OUTPUT_DIR}/aparc.a2009s+aseg.nii.gz	${FS_DIR}/aparc.a2009s+aseg.nii.gz	
+	${FLYWHEEL_BASE}/separateROIs.py -aparc2009 ${FS_DIR}/aparc.a2009s+aseg.nii.gz	
 fi
 
 ###############################################################################
@@ -477,13 +490,17 @@ fi
 
 ###############################################################################
 # Compress Recon-all output directory
-
 echo -e "$CONTAINER  Compressing final outputs..."
 
 # Set file permissions prior to compression
 chmod -R 777 ${WORK_DIR}
 cd /
 zip -r /${OUTPUT_DIR}/${GEAR}_"${SUBJECT_ID}"`date +"_D%m-%d-%yT%H-%M"`.zip "${SUBJECT_ID}"
+
+# Now compress the FS_DIR that will be input to the rtp_pipeline
+cd ${OUTPUT_DIR}
+
+zip -r fs.zip fs
 
 
 ###############################################################################

@@ -38,7 +38,8 @@ def segThalamus():
     index  = [int(s.split()[0]) for s in cleanLUT if 8100<int(s.split()[0]) and int(s.split()[0])<8300]
     label  = [str(s.split()[1]) for s in cleanLUT if 8100<int(s.split()[0]) and int(s.split()[0])<8300]
     (head, tail) = os.path.split(args.ThN)
-    dilstr = ['', '_dil-1', '_dil-2']; diloption = ['', '-dilate 1', '-dilate 2']
+    # dilstr = ['', '_dil-1', '_dil-2']; diloption = ['', '-dilate 1', '-dilate 2']
+    dilstr = ['']; diloption = ['']
     for i in range(len(index)):
         # extract nuclei
         for x in range(len(dilstr)):
@@ -61,7 +62,8 @@ def segBensonVarea():
     (head, tail) = os.path.split(args.benV)
  
     for index in dic_ben:
-        dilstr = ['', '_dil-1', '_dil-2']; diloption = ['', '-dilate 1 ', '-dilate 2 ']
+        # dilstr = ['', '_dil-1', '_dil-2']; diloption = ['', '-dilate 1', '-dilate 2']
+        dilstr = ['']; diloption = ['']
         for i in range(len(dilstr)):
             roiname = os.path.join(head, 'ROIs', str(dic_ben[index] +dilstr[i] + '.nii.gz'))
             # extract benson varea
@@ -94,7 +96,8 @@ def segCB():
     import subprocess as sp
     (head, tail) = os.path.split(args.cb)
     for index in range(1,18):
-        dilstr = ['', '_dil-1', '_dil-2']; diloption = ['', '-dilate 1 ', '-dilate 2 ']
+        # dilstr = ['', '_dil-1', '_dil-2']; diloption = ['', '-dilate 1', '-dilate 2']
+        dilstr = ['']; diloption = ['']
         for i in range(len(dilstr)):
             # extract Cerebellum based on the 17Networks
             roiname = os.path.join(head, 'ROIs', str('17Networks_' + str(index) + dilstr[i] + '.nii.gz'))
@@ -132,7 +135,8 @@ def segAparc2009():
     label  = [str(s.split()[1]) for s in cleanLUT if (11100<int(s.split()[0]) and int(s.split()[0])<12175 ) or (0<int(s.split()[0]) and int(s.split()[0])<180) ]
 
     for i in range(len(index)):
-        dilstr = ['', '_dil-1', '_dil-2']; diloption = ['', '-dilate 1 ', '-dilate 2 ']
+        # dilstr = ['', '_dil-1', '_dil-2']; diloption = ['', '-dilate 1', '-dilate 2']
+        dilstr = ['']; diloption = ['']
         for x in range(len(dilstr)):
             #  extract nuclei
             roiname = os.path.join(head, 'ROIs', str(label[i] + dilstr[x] + '.nii.gz'))
