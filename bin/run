@@ -434,7 +434,7 @@ fi
 if [[ ${THALAMUS} == "True" ]]; then
 	# separate nuclei from the ThalamicNuclei.T1.FSvoxelSpace.nii.gz
 	# separate ROIs
-	cp ${OUTPUT_DIR}/ThalamicNuclei.T1.FSvoxelSpace.nii.gz ${FS_DIR}/ThalamicNuclei.T1.FSvoxelSpace.nii.gz \
+	cp ${OUTPUT_DIR}/ThalamicNuclei.T1.FSvoxelSpace.nii.gz ${FS_DIR}/ThalamicNuclei.T1.FSvoxelSpace.nii.gz
 	${FLYWHEEL_BASE}/separateROIs.py -ThN ${FS_DIR}/ThalamicNuclei.T1.FSvoxelSpace.nii.gz \
 									 -ThLUT ${TEMPLATES}/FreesurferColorLUT_THALAMUS.txt 
 	
