@@ -62,6 +62,14 @@ def parse_config(args):
     if args.c:
         print(config['config']['hippocampal_subfields'])
 
+    # Process cerebellum segmentation
+    if args.e:
+        print(config['config']['cerebellum'])
+
+    # Process MORI transformation
+    if args.m:
+        print(config['config']['mori'])
+
     # Process brainstem substructures
     if args.b:
         print(config['config']['brainstem_structures'])
@@ -72,6 +80,9 @@ def parse_config(args):
     # Process neuropythy commands    
     if args.p:
         print(config['config']['neuropythy_analysis'])
+    # separate aparcaseg ROIs
+    if args.aparc2009:
+        print(config['config']['aparc2009'])
 
     # Get subject code from archive input
     if args.z:
@@ -102,9 +113,12 @@ if __name__ == '__main__':
     ap.add_argument('-c', action='store_true', help='Hippocampal subfields')
     ap.add_argument('-b', action='store_true', help='Brainstem processing')
     ap.add_argument('-t', action='store_true', help='Thalamus processing')
+    ap.add_argument('-e', action='store_true', help='cerebellum processing')
+    ap.add_argument('-m', action='store_true', help='transform mori rois')
     ap.add_argument('-p', action='store_true', help='Neuropythy processing')
     ap.add_argument('-r', action='store_true', help='Surface registration')
     ap.add_argument('-z', action='store_true', help='Get sub code from zip input')
+    ap.add_argument('-aparc2009', action='store_true', help='separate aparc.a2009 ROIs')
     args = ap.parse_args()
 
     parse_config(args)
