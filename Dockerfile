@@ -108,7 +108,9 @@ RUN mv /flywheel/v0/templates/FSL_MNI152_FreeSurferConformed_1mm.nii.gz /flywhee
 # RUN wget --retry-connrefused --waitretry=5 --read-timeout=20 --timeout=15 -t 0 -q -O MORI_ROIs.zip "https://osf.io/zxdt9/download"
 # RUN mkdir /flywheel/v0/templates/
 # Below the new file done with Lisa Bruckert
-RUN wget --retry-connrefused --waitretry=5 --read-timeout=20 --timeout=15 -t 0 -q -O MORI_ROIs.zip "https://osf.io/52ty3/download"
+# RUN wget --retry-connrefused --waitretry=5 --read-timeout=20 --timeout=15 -t 0 -q -O MORI_ROIs.zip "https://osf.io/52ty3/download"
+# New files with the cerebellar peduncles from Lisa Brucket, and new eye ROIs
+RUN wget --retry-connrefused --waitretry=5 --read-timeout=20 --timeout=15 -t 0 -q -O MORI_ROIs.zip "https://osf.io/kqhxz/download"
 RUN mkdir /flywheel/v0/templates/MNI_JHU_tracts_ROIs/ 
 RUN unzip MORI_ROIs.zip -d /flywheel/v0/templates/MNI_JHU_tracts_ROIs/
 
