@@ -1,10 +1,11 @@
 {
  "config": {
-   "subject_id": "s000config",
+   "subject_id": "s0001",
    "reconall_options": "-all -qcache",
    "hippocampal_subfields": true,
     "brainstem_structures": true,
     "thalamic_nuclei": true,
+    "hcp": true,
     "neuropythy_analysis": true,
     "register_surfaces": true,
     "convert_surfaces": true,

@@ -111,6 +111,10 @@ RUN unzip MORI_ROIs.zip -d /flywheel/v0/templates/
 # Add Thalamus FS LUT
 COPY FreesurferColorLUT_THALAMUS.txt /flywheel/v0/templates/FreesurferColorLUT_THALAMUS.txt
 
+## Add HCP Atlas and LUT
+COPY local/MNI_Glasser_HCP_v1.0.nii.gz /flywheel/v0/templates/MNI_Glasser_HCP_v1.0.nii.gz
+COPY local/LUT_HCP.txt /flywheel/v0/templates/LUT_HCP.txt
+
 # Copy and configure run script and metadata code
 COPY bin/run \
       bin/parse_config.py \

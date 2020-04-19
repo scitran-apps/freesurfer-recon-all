@@ -113,6 +113,11 @@
         "default":true,
         "type": "boolean"
     },
+    "hcp": {
+        "description": "bring MNI_Glasser_HCP into native space, and generate separate image files for each volume",
+        "default":true,
+        "type": "boolean"
+    },
     "mori": {
         "description": "bring MORI  ROIs MNI_JHU_tracts_ROIs into native space",
         "default":true,
