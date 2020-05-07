@@ -82,7 +82,14 @@ if [[ ! -f ${LICENSE_FILE} ]]; then
   echo -e ${LICENSE} > ${LICENSE_FILE}
 fi
 
-SUBJECT_ID=$(echo `${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -i` | sed 's/ /_/g')
+if [[ -z $1 ]] ;
+then
+SUBJECT_ID=$(echo `${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -i` | sed 's/ /_/g');
+else
+SUBJECT_ID=$1
+fi
+echo $1
+echo $SUBJECT_ID
 RECON_ALL_OPTS=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -o`
 CONVERT_SURFACES=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -s`
 CONVERT_VOLUMES=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -n`
@@ -90,6 +97,7 @@ ASEG_CSV=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -a`
 HIPPOCAMPUS=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -c`
 BRAINSTEM=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -b`
 THALAMUS=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -t`
+HCP=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -g`
 NEUROPYTHY=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -p`
 REGISTER_SURFACES=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -r`
 CEREBELLUM=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -e`
@@ -133,6 +141,40 @@ if [[ -z "${ANATOMICAL}" ]]; then
   fi
 fi
 
+
+###############################################################################
+# Check for anatomical NIfTI or DICOM archive
+
+
+  # Despace filenames
+  despacer "${ANAT_DIR}"
+
+  # NIfTI input file
+  ANATOMICAL=$(find ${ANAT_DIR}/* -name "t1.nii.gz")
+
+ # DICOM archive
+ if [[ -z "${ANATOMICAL}" ]]; then
+    ANATOMICAL=$(find $INPUT_DIR/* -not -path '*/\.*' -type f | head -1)
+
+    # Handle Zip archive or uncompressed volume
+    if [[ "${ANATOMICAL}" == *.zip ]]; then
+      echo "$CONTAINER  Unzipping $ANATOMICAL"
+      DICOM_DIR="${ANAT_DIR}"/dicoms
+      mkdir ${DICOM_DIR}
+      unzip -q "${ANATOMICAL}" -d ${DICOM_DIR}
+
+      # Get the 'despaced' path to the first dicom file for input to recon-all
+      despacer "${DICOM_DIR}"
+      ANATOMICAL=$(find ${DICOM_DIR}/* -not -path '*/\.*' -type f | head -1)
+    fi
+
+    # Final check for anatomical file
+    if [[ -z "${ANATOMICAL}" ]]; then
+      echo "$CONTAINER  Anatomical input could not be found in $ANAT_DIR! Exiting (1)"
+      ls -lRa ${ANAT_DIR}
+      exit 1
+    fi
+fi
 # Proccess additional anatomical inputs
 ADD_INPUTS=''
 ANAT_DIRS=$(echo -e $ANAT_DIR_2 $ANAT_DIR_3 $ANAT_DIR_4 $ANAT_DIR_5)
@@ -203,19 +245,18 @@ if [[ ${CEREBELLUM} == "True" ]]; then
   echo -e "$CONTAINER starting segmentation of cerebellum"
   # Create binary mask of brainmask.mgz and MNI_152
   mri_convert ${MRI_DIR}/brainmask.mgz ${MRI_DIR}/brainmask.nii.gz
-  #mri_binarize --min 0.1 --i ${MRI_DIR}/brainmask.mgz --o ${MRI_DIR}/binbrainmask.nii.gz
-  #mri_binarize --min 0.1 --i ${TEMPLATES}/MNI_152.nii.gz --o ${MRI_DIR}/binMNI_152.nii.gz
+  mri_binarize --min 0.1 --i ${MRI_DIR}/brainmask.mgz --o ${MRI_DIR}/binbrainmask.nii.gz
+  mri_binarize --min 0.1 --i ${TEMPLATES}/MNI_152.nii.gz --o ${MRI_DIR}/binMNI_152.nii.gz
   # calculate the transformation
-  antsRegistrationSyN.sh -d 3 -f ${MRI_DIR}/brainmask.nii.gz \
-		-o ${MRI_DIR}/ants			     \
-		-m ${TEMPLATES}/MNI_152.nii.gz		     
+  antsRegistrationSyN.sh -d 3 -o ${MRI_DIR}/ants								\
+		-f ${MRI_DIR}/brainmask.nii.gz -m ${TEMPLATES}/MNI_152.nii.gz
   # apply both affine and nonlinear transofrmation
-  antsApplyTransforms -d 3 -e 0 -v 1				\
-		-i ${TEMPLATES}/Buckner_CB.nii.gz		\
-		-r ${MRI_DIR}/brainmask.nii.gz			\
-		-n GenericLable[Linear]				\
-		-t ${MRI_DIR}/ants1Warp.nii.gz			\
-		-t ${MRI_DIR}/ants0GenericAffine.mat		\
+  antsApplyTransforms -d 3 														\
+		-i ${TEMPLATES}/Buckner_CB.nii.gz									\
+		-r ${MRI_DIR}/brainmask.nii.gz											\
+		-n GenericLabel[Linear]													\
+		-t ${MRI_DIR}/ants1Warp.nii.gz											\
+		-t ${MRI_DIR}/ants0GenericAffine.mat									\
 		-o ${MRI_DIR}/buckner2011_cerebellum.nii.gz
   # copy it to output dir
   mv ${MRI_DIR}/buckner2011_cerebellum.nii.gz \
@@ -230,17 +271,16 @@ if [[ ${MORI} == "True" ]]; then
     mri_binarize --min 0.1 --i ${MRI_DIR}/brainmask.mgz --o ${MRI_DIR}/binbrainmask.nii.gz
     mri_binarize --min 0.1 --i ${TEMPLATES}/MNI_152.nii.gz --o ${MRI_DIR}/binMNI_152.nii.gz
   # calculate the transformation
-  antsRegistrationSyN.sh -d 3 -f ${MRI_DIR}/brainmask.nii.gz \
-		-o ${MRI_DIR}/ants			     \
-		-m ${TEMPLATES}/MNI_152.nii.gz		     
+  antsRegistrationSyN.sh -d 3 -o ${MRI_DIR}/ants								\
+		-f ${MRI_DIR}/brainmask.nii.gz -m ${TEMPLATES}/MNI_152.nii.gz
   fi
   for ROI in `ls ${MORI_DIR}/*`; do
     ROIname=$(basename -- "$ROI"); ROIname="${ROIname%.nii.gz}"  
-    antsApplyTransforms -d 3 -e 0 -v 1 											\
+    antsApplyTransforms -d 3 														\
 		-i ${MORI_DIR}/${ROIname}.nii.gz									\
-		-r ${MRI_DIR}/brainmask.nii.gz										\
-		-n GenericLabel[Linear]											\
-		-t ${MRI_DIR}/ants1Warp.nii.gz										\
+		-r ${MRI_DIR}/brainmask.nii.gz											\
+		-n GenericLabel[Linear]																\
+		-t ${MRI_DIR}/ants1Warp.nii.gz											\
 		-t ${MRI_DIR}/ants0GenericAffine.mat									\
 		-o ${MRI_DIR}/MORI_${ROIname}.nii.gz
     
@@ -248,6 +288,30 @@ if [[ ${MORI} == "True" ]]; then
 						--o ${ROIs_DIR}/${ROIname}.nii.gz
     rm ${MRI_DIR}/MORI_${ROIname}.nii.gz 
   done
+fi
+# transform HCP atlas to native space
+if [[ ${HCP} == "True" ]]; then
+  echo -e "$CONTRAINER starting transform HCP atlas to native space"
+  if [[ ${CEREBELLUM} != "True" ]]; then
+	# Create binary mask of brainmask.mgz and MNI_152
+    mri_convert  ${MRI_DIR}/brainmask.mgz ${MRI_DIR}/brainmask.nii.gz
+    mri_binarize --min 0.1 --i ${MRI_DIR}/brainmask.mgz --o ${MRI_DIR}/binbrainmask.nii.gz
+    mri_binarize --min 0.1 --i ${TEMPLATES}/MNI_152.nii.gz --o ${MRI_DIR}/binMNI_152.nii.gz
+    # calculate the transformation
+    antsRegistrationSyN.sh -d 3 -o ${MRI_DIR}/ants								\
+		-f ${MRI_DIR}/brainmask.nii.gz -m ${TEMPLATES}/MNI_152.nii.gz
+  fi
+  # apply both affine and nonlinear transofrmation
+  antsApplyTransforms -d 3 														\
+		-i ${TEMPLATES}/MNI_Glasser_HCP_v1.0.nii.gz								\
+		-r ${MRI_DIR}/brainmask.nii.gz											\
+		-n GenericLabel[Linear]													\
+		-t ${MRI_DIR}/ants1Warp.nii.gz											\
+		-t ${MRI_DIR}/ants0GenericAffine.mat									\
+		-o ${MRI_DIR}/Glasser_HCP_v1.0.nii.gz
+  # copy it to output dir
+  mv ${MRI_DIR}/Glasser_HCP_v1.0.nii.gz          \
+			${OUTPUT_DIR}/Glasser_HCP_v1.0.nii.gz
 fi
  	
 export LD_LIBRARY_PATH=/opt/freesurfer/MCRv84/runtime/glnxa64:/opt/freesurfer/MCRv84/bin/glnxa64:/opt/freesurfer/MCRv84/sys/os/glnxa64:/opt/freesurfer/MCRv84/sys/java/jre/glnxa64/jre/lib/amd64/native_threads:/opt/freesurfer/MCRv84/sys/java/jre/glnxa64/jre/lib/amd64/server:/opt/freesurfer/MCRv84/sys/java/jre/glnxa64/jre/lib/amd64
@@ -428,6 +492,16 @@ if [[ ${THALAMUS} == "True" ]]; then
 	
 fi
 
+# HCP Atlas 
+if [[ ${HCP} == "True" ]]; then
+	# separate ROIs
+	cp ${OUTPUT_DIR}/Glasser_HCP_v1.0.nii.gz ${FS_DIR}/Glasser_HCP_v1.0.nii.gz
+	${FLYWHEEL_BASE}/separateROIs.py -hcp ${FS_DIR}/Glasser_HCP_v1.0.nii.gz \
+									 -hcpLUT ${TEMPLATES}/LUT_HCP.txt 
+	
+fi
+
+
 if [[ ${NEUROPYTHY} == "True" ]]; then
 	cp ${OUTPUT_DIR}/benson14_varea.nii.gz  ${FS_DIR}/benson14_varea.nii.gz
 	${FLYWHEEL_BASE}/separateROIs.py -benV ${FS_DIR}/benson14_varea.nii.gz
@@ -459,7 +533,7 @@ if [[ $ASEG_CSV == "True" ]]; then
           --parc=$p \
           --tablefile="${OUTPUT_DIR}/${SUBJECT_ID}_${h}_${p}_stats_area_mm2.csv"
       done
-    done
+  done
 
     if [[ ${THALAMUS} == "True" ]]; then
         for h in $hemi; do
