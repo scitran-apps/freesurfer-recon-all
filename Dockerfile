@@ -115,6 +115,9 @@ COPY FreesurferColorLUT_THALAMUS.txt /flywheel/v0/templates/FreesurferColorLUT_T
 COPY local/MNI_Glasser_HCP_v1.0.nii.gz /flywheel/v0/templates/MNI_Glasser_HCP_v1.0.nii.gz
 COPY local/LUT_HCP.txt /flywheel/v0/templates/LUT_HCP.txt
 
+## setup ants SyN.sh
+COPY antsRegistrationSyN.sh /usr/bin/antsRegistrationSyN.sh
+RUN echo "export ANTSPATH=/usr/bin/" >> ~/.bashrc
 # Copy and configure run script and metadata code
 COPY bin/run \
       bin/parse_config.py \

@@ -26,7 +26,7 @@ SETPATH
 }
 
 # Uncomment the line below in case you have not set the ANTSPATH variable in your environment.
-# export ANTSPATH=${ANTSPATH:="$HOME/bin/ants/"} # EDIT THIS
+export ANTSPATH=${ANTSPATH:="/usr/bin/"} # EDIT THIS
 
 #ANTSPATH=YOURANTSPATH
 if [[ ${#ANTSPATH} -le 3 ]];
