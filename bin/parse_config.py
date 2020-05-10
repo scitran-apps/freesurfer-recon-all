@@ -77,9 +77,15 @@ def parse_config(args):
     # Process thalamic nuclei
     if args.t:
         print(config['config']['thalamic_nuclei'])
+
+    # Process HCP atlas
+    if args.g:
+        print(config['config']['hcp'])
+
     # Process neuropythy commands    
     if args.p:
         print(config['config']['neuropythy_analysis'])
+
     # separate aparcaseg ROIs
     if args.aparc2009:
         print(config['config']['aparc2009'])
@@ -115,6 +121,7 @@ if __name__ == '__main__':
     ap.add_argument('-t', action='store_true', help='Thalamus processing')
     ap.add_argument('-e', action='store_true', help='cerebellum processing')
     ap.add_argument('-m', action='store_true', help='transform mori rois')
+    ap.add_argument('-g', action='store_true', help='HCP atlas processing')
     ap.add_argument('-p', action='store_true', help='Neuropythy processing')
     ap.add_argument('-r', action='store_true', help='Surface registration')
     ap.add_argument('-z', action='store_true', help='Get sub code from zip input')

@@ -90,6 +90,7 @@ ASEG_CSV=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -a`
 HIPPOCAMPUS=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -c`
 BRAINSTEM=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -b`
 THALAMUS=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -t`
+HCP=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -g`
 NEUROPYTHY=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -p`
 REGISTER_SURFACES=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -r`
 CEREBELLUM=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -e`
@@ -206,21 +207,14 @@ if [[ ${CEREBELLUM} == "True" ]]; then
   mri_binarize --min 0.1 --i ${MRI_DIR}/brainmask.mgz --o ${MRI_DIR}/binbrainmask.nii.gz
   mri_binarize --min 0.1 --i ${TEMPLATES}/MNI_152.nii.gz --o ${MRI_DIR}/binMNI_152.nii.gz
   # calculate the transformation
-  antsRegistration -d 3 -v 0                 									\
-		-o ${MRI_DIR}/ants																	\
-		-r [${MRI_DIR}/binbrainmask.nii.gz,${MRI_DIR}/binMNI_152.nii.gz,1] 		\
-		-t Syn[0.1, 3, 0]														\
-		-c [100x75x20x0, 0, 10]													\
-		-m CC[${MRI_DIR}/brainmask.nii.gz, ${TEMPLATES}/MNI_152.nii.gz,1,4]		\
-		-f 4x3x2x1																\
-		-s 1x1x0x0																\
-		-x [${MRI_DIR}/binbrainmask.nii.gz, ${MRI_DIR}/binMNI_152.nii.gz]
+  antsRegistrationSyN.sh -d 3 -o ${MRI_DIR}/ants                                \
+        -f ${MRI_DIR}/brainmask.nii.gz -m ${TEMPLATES}/MNI_152.nii.gz
   # apply both affine and nonlinear transofrmation
   antsApplyTransforms -d 3 														\
 		-i ${TEMPLATES}/Buckner_CB.nii.gz									\
 		-r ${MRI_DIR}/brainmask.nii.gz											\
-		-n Linear																\
-		-t ${MRI_DIR}/ants1Warp.nii.gz											\
+        -n GenericLabel[Linear]                                                 \
+     	-t ${MRI_DIR}/ants1Warp.nii.gz											\
 		-t ${MRI_DIR}/ants0GenericAffine.mat									\
 		-o ${MRI_DIR}/buckner2011_cerebellum.nii.gz
   # copy it to output dir
@@ -237,24 +231,18 @@ if [[ ${MORI} == "True" ]]; then
     mri_binarize --min 0.1 --i ${MRI_DIR}/brainmask.mgz --o ${MRI_DIR}/binbrainmask.nii.gz
     # mri_binarize --min 0.1 --i ${TEMPLATES}/MNI_152.nii.gz --o ${MRI_DIR}/binMNI_152.nii.gz
     mri_binarize --min 0.1 --i ${MORI_DIR}/FSL_MNI152_FreeSurferConformed_1mm.nii.gz --o ${MRI_DIR}/binMNI_152.nii.gz
-    # calculate the transformation
-    antsRegistration -d 3 -v 0                 									\
-		-o ${MRI_DIR}/ants																	\
-		-r [${MRI_DIR}/binbrainmask.nii.gz,${MRI_DIR}/binMNI_152.nii.gz,1] 		\
-		-t Syn[0.1, 3, 0]														\
-		-c [100x75x20x0, 0, 10]													\
-		-m CC[${MRI_DIR}/brainmask.nii.gz, ${MORI_DIR}/FSL_MNI152_FreeSurferConformed_1mm.nii.gz,1,4]		\
-		-f 4x3x2x1																\
-		-s 1x1x0x0																\
-		-x [${MRI_DIR}/binbrainmask.nii.gz, ${MRI_DIR}/binMNI_152.nii.gz]
+  # calculate the transformation
+  antsRegistrationSyN.sh -d 3 -o ${MRI_DIR}/ants                                \
+        -f ${MRI_DIR}/brainmask.nii.gz -m ${TEMPLATES}/MNI_152.nii.gz
+  # apply both affine and nonlinear transofrmation
   fi
   for ROI in `ls ${MORI_DIR}/*`; do
     ROIname=$(basename -- "$ROI"); ROIname="${ROIname%.nii.gz}"  
     antsApplyTransforms -d 3 														\
 		-i ${MORI_DIR}/${ROIname}.nii.gz									\
 		-r ${MRI_DIR}/brainmask.nii.gz											\
-		-n Linear																\
-		-t ${MRI_DIR}/ants1Warp.nii.gz											\
+        -n GenericLabel[Linear]                                                 \
+     	-t ${MRI_DIR}/ants1Warp.nii.gz											\
 		-t ${MRI_DIR}/ants0GenericAffine.mat									\
 		-o ${MRI_DIR}/MORI_${ROIname}.nii.gz
     
@@ -263,7 +251,33 @@ if [[ ${MORI} == "True" ]]; then
     rm ${MRI_DIR}/MORI_${ROIname}.nii.gz 
   done
 fi
- 	
+
+# transform HCP atlas to native space
+if [[ ${HCP} == "True" ]]; then
+  echo -e "$CONTRAINER starting transform HCP atlas to native space"
+  if [[ ${CEREBELLUM} != "True" ]]; then
+    # Create binary mask of brainmask.mgz and MNI_152
+    mri_convert  ${MRI_DIR}/brainmask.mgz ${MRI_DIR}/brainmask.nii.gz
+    mri_binarize --min 0.1 --i ${MRI_DIR}/brainmask.mgz --o ${MRI_DIR}/binbrainmask.nii.gz
+    mri_binarize --min 0.1 --i ${TEMPLATES}/MNI_152.nii.gz --o ${MRI_DIR}/binMNI_152.nii.gz
+    # calculate the transformation
+    antsRegistrationSyN.sh -d 3 -o ${MRI_DIR}/ants                              \
+        -f ${MRI_DIR}/brainmask.nii.gz -m ${TEMPLATES}/MNI_152.nii.gz
+  fi
+  # apply both affine and nonlinear transofrmation
+  antsApplyTransforms -d 3                                                      \
+        -i ${TEMPLATES}/MNI_Glasser_HCP_v1.0.nii.gz                             \
+        -r ${MRI_DIR}/brainmask.nii.gz                                          \
+        -n GenericLabel[Linear]                                                 \
+        -t ${MRI_DIR}/ants1Warp.nii.gz                                          \
+        -t ${MRI_DIR}/ants0GenericAffine.mat                                    \
+        -o ${MRI_DIR}/Glasser_HCP_v1.0.nii.gz
+  # copy it to output dir
+  mv ${MRI_DIR}/Glasser_HCP_v1.0.nii.gz          \
+            ${OUTPUT_DIR}/Glasser_HCP_v1.0.nii.gz
+fi
+
+	
 export LD_LIBRARY_PATH=/opt/freesurfer/MCRv84/runtime/glnxa64:/opt/freesurfer/MCRv84/bin/glnxa64:/opt/freesurfer/MCRv84/sys/os/glnxa64:/opt/freesurfer/MCRv84/sys/java/jre/glnxa64/jre/lib/amd64/native_threads:/opt/freesurfer/MCRv84/sys/java/jre/glnxa64/jre/lib/amd64/server:/opt/freesurfer/MCRv84/sys/java/jre/glnxa64/jre/lib/amd64
 
 
@@ -440,6 +454,15 @@ if [[ ${THALAMUS} == "True" ]]; then
 	${FLYWHEEL_BASE}/separateROIs.py -ThN ${FS_DIR}/ThalamicNuclei.T1.FSvoxelSpace.nii.gz \
 									 -ThLUT ${TEMPLATES}/FreesurferColorLUT_THALAMUS.txt 
 	
+fi
+
+# HCP Atlas
+if [[ ${HCP} == "True" ]]; then
+    # separate ROIs
+    cp ${OUTPUT_DIR}/Glasser_HCP_v1.0.nii.gz ${FS_DIR}/Glasser_HCP_v1.0.nii.gz
+    ${FLYWHEEL_BASE}/separateROIs.py -hcp ${FS_DIR}/Glasser_HCP_v1.0.nii.gz \
+                                     -hcpLUT ${TEMPLATES}/LUT_HCP.txt
+
 fi
 
 if [[ ${NEUROPYTHY} == "True" ]]; then
