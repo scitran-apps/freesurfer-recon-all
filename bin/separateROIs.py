@@ -229,7 +229,7 @@ if __name__ == '__main__':
     ap.add_argument('-ThLUT', type=str,  help='Full path to ThalamicNuclei LUT')
     ap.add_argument('-hcp', type=str,  help='Full path to Glasser_HCP.nii.gz, specify LookupTable by -hcpLUT')
     ap.add_argument('-hcpLUT', type=str,  help='Full path to HCP Atlas LUT')
-     ap.add_argument('-aparc2009', type=str, help='Full path to aparc.2009.nii.gz')
+    ap.add_argument('-aparc2009', type=str, help='Full path to aparc.2009.nii.gz')
     ap.add_argument('-benV', type=str, help='Full path to benson Varea image')
     ap.add_argument('-cb', type=str, help='Full path to Bucker cerebellm image')
     args = ap.parse_args()
