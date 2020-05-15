@@ -53,6 +53,33 @@ def segThalamus():
             print(cmdstr)
             sp.call(cmdstr, shell=True) 
 
+def segHCP():
+    import os
+    import subprocess as sp
+    fLUT = open(args.hcpLUT)
+    LUT = fLUT.readlines()
+    fLUT.close()
+    cleanLUT = [s.rstrip('\n') for s in LUT if not '#' in s]
+    # Obtain the labels of thalamic nuclei
+    index  = [int(s.split()[0]) for s in cleanLUT]
+    label  = [str(s.split()[1]) for s in cleanLUT]
+    (head, tail) = os.path.split(args.hcp)
+    # dilstr = ['', '_dil-1', '_dil-2']; diloption = ['', '-dilate 1', '-dilate 2']
+    dilstr = ['']; diloption = ['']
+    for i in range(len(index)):
+        # extract nuclei
+        for x in range(len(dilstr)):
+            roiname = os.path.join(head, 'ROIs', str(label[i] + dilstr[x] + '.nii.gz'))
+            cmdstr = str('mri_extract_label ' + diloption[x] + ' ' + args.hcp + ' ' +
+                str(index[i]) + ' ' + roiname)
+            print(cmdstr)
+            sp.call(cmdstr, shell=True)
+            # binarize the ROIs
+            cmdstr = str('mri_binarize ' + '--min 0.1 ' + '--i ' + roiname + ' ' + '--o ' + roiname)
+            print(cmdstr)
+            sp.call(cmdstr, shell=True)
+
+
 def segBensonVarea():
     import os
     import subprocess as sp
@@ -160,6 +187,9 @@ def separateROIs(args):
     if args.ThN:
         print('separating thalamic nuclei')
         segThalamus()
+    if args.hcp:
+        print('separating HCP atlas')
+        segHCP()
     if args.aparc2009:
         print('separating aparc+aseg.nii.gz')
         segAparc2009()
@@ -197,6 +227,8 @@ if __name__ == '__main__':
     ap = argparse.ArgumentParser()
     ap.add_argument('-ThN', type=str,  help='Full path to ThalamicNuclei.T1.FSvoxelSpace.nii.gzi, specify LookupTable by -ThLUT')
     ap.add_argument('-ThLUT', type=str,  help='Full path to ThalamicNuclei LUT')
+    ap.add_argument('-hcp', type=str,  help='Full path to Glasser_HCP.nii.gz, specify LookupTable by -hcpLUT')
+    ap.add_argument('-hcpLUT', type=str,  help='Full path to HCP Atlas LUT')
     ap.add_argument('-aparc2009', type=str, help='Full path to aparc.2009.nii.gz')
     ap.add_argument('-benV', type=str, help='Full path to benson Varea image')
     ap.add_argument('-cb', type=str, help='Full path to Bucker cerebellm image')
