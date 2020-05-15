@@ -105,12 +105,8 @@ RUN unzip -j "Buckner_JNeurophysiol11_MNI152.zip" "Buckner_JNeurophysiol11_MNI15
 RUN mv /flywheel/v0/templates/FSL_MNI152_FreeSurferConformed_1mm.nii.gz /flywheel/v0/templates/MNI_152.nii.gz
 
 # Download the MORI ROIs 
-# RUN wget --retry-connrefused --waitretry=5 --read-timeout=20 --timeout=15 -t 0 -q -O MORI_ROIs.zip "https://osf.io/zxdt9/download"
-# RUN mkdir /flywheel/v0/templates/
-# Below the new file done with Lisa Bruckert
-# RUN wget --retry-connrefused --waitretry=5 --read-timeout=20 --timeout=15 -t 0 -q -O MORI_ROIs.zip "https://osf.io/52ty3/download"
 # New files with the cerebellar peduncles from Lisa Brucket, and new eye ROIs
-RUN wget --retry-connrefused --waitretry=5 --read-timeout=20 --timeout=15 -t 0 -q -O MORI_ROIs.zip "https://osf.io/kqhxz/download"
+RUN wget --retry-connrefused --waitretry=5 --read-timeout=20 --timeout=15 -t 0 -q -O MORI_ROIs.zip "https://osf.io/syt9m/download"
 RUN mkdir /flywheel/v0/templates/MNI_JHU_tracts_ROIs/ 
 RUN unzip MORI_ROIs.zip -d /flywheel/v0/templates/MNI_JHU_tracts_ROIs/
 
@@ -118,8 +114,12 @@ RUN unzip MORI_ROIs.zip -d /flywheel/v0/templates/MNI_JHU_tracts_ROIs/
 COPY FreesurferColorLUT_THALAMUS.txt /flywheel/v0/templates/FreesurferColorLUT_THALAMUS.txt
 
 ## Add HCP Atlas and LUT
-COPY local/MNI_Glasser_HCP_v1.0.nii.gz /flywheel/v0/templates/MNI_Glasser_HCP_v1.0.nii.gz
-COPY local/LUT_HCP.txt /flywheel/v0/templates/LUT_HCP.txt
+# Download LUT
+RUN wget --retry-connrefused --waitretry=5 --read-timeout=20 --timeout=15 -t 0 -q -O LUT_HCP.txt "https://osf.io/rdvfk/download"
+COPY LUT_HCP.txt /flywheel/v0/templates/LUT_HCP.txt
+
+RUN wget --retry-connrefused --waitretry=5 --read-timeout=20 --timeout=15 -t 0 -q -O MNI_Glasser_HCP_v1.0.nii.gz "https://osf.io/7vjz9/download"
+COPY MNI_Glasser_HCP_v1.0.nii.gz /flywheel/v0/templates/MNI_Glasser_HCP_v1.0.nii.gz
 
 ## setup ants SyN.sh
 COPY antsRegistrationSyN.sh /usr/bin/antsRegistrationSyN.sh
