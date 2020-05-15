@@ -116,10 +116,10 @@ COPY FreesurferColorLUT_THALAMUS.txt /flywheel/v0/templates/FreesurferColorLUT_T
 ## Add HCP Atlas and LUT
 # Download LUT
 RUN wget --retry-connrefused --waitretry=5 --read-timeout=20 --timeout=15 -t 0 -q -O LUT_HCP.txt "https://osf.io/rdvfk/download"
-COPY LUT_HCP.txt /flywheel/v0/templates/LUT_HCP.txt
+RUN cp LUT_HCP.txt /flywheel/v0/templates/LUT_HCP.txt
 
 RUN wget --retry-connrefused --waitretry=5 --read-timeout=20 --timeout=15 -t 0 -q -O MNI_Glasser_HCP_v1.0.nii.gz "https://osf.io/7vjz9/download"
-COPY MNI_Glasser_HCP_v1.0.nii.gz /flywheel/v0/templates/MNI_Glasser_HCP_v1.0.nii.gz
+RUN cp MNI_Glasser_HCP_v1.0.nii.gz /flywheel/v0/templates/MNI_Glasser_HCP_v1.0.nii.gz
 
 ## setup ants SyN.sh
 COPY antsRegistrationSyN.sh /usr/bin/antsRegistrationSyN.sh
