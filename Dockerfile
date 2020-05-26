@@ -8,7 +8,7 @@
 #   docker run -v /path/to/your/subject:/input scitran/freesurfer-recon-all
 #
 
-FROM ubuntu:trusty
+FROM ubuntu:xenial
 LABEL MAINTAINER="Michael Perry <lmperry@stanford.edu>"
 
 # Install dependencies for FreeSurfer
