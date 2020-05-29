@@ -147,7 +147,7 @@ def parse_config(args):
             print(open(local_license, 'r').read())
         # else look for it in the project metadata
         elif fs_license_info:
-            print(fs_license.replace(" ", "\\n"))
+            print(fs_license_info.replace(" ", "\\n"))
         # else we don't have one... and give an error in the bash script
         else:
             print("")
