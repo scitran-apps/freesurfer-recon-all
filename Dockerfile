@@ -77,7 +77,7 @@ RUN apt-get update && apt-get install -y --force-yes \
 RUN apt-get install -y libxt-dev libxmu-dev
 ENV FREESURFER_HOME /opt/freesurfer
 
-RUN wget -N -qO- "https://surfer.nmr.mgh.harvard.edu/fswiki/MatlabRuntime?action=AttachFile&do=get&target=runtime2014bLinux.tar.gz" | tar -xz -C $FREESURFER_HOME && chown -R root:root /opt/freesurfer/MCRv84
+RUN wget -N -qO- "https://surfer.nmr.mgh.harvard.edu/fswiki/MatlabRuntime?action=AttachFile&do=get&target=runtime2014bLinux.tar.gz" | tar -xz -C $FREESURFER_HOME && chown -R root:root /opt/freesurfer/MCRv84 && chmod -R a+rx /opt/freesurfer/MCRv84
 
 RUN apt-get install python-pip
 # Install neuropythy
@@ -143,4 +143,7 @@ WORKDIR ${FLYWHEEL}
 # Run the run.sh script on entry.
 ENTRYPOINT ["/flywheel/v0/run"]
 
-
+#make it work under singularity 
+# RUN ldconfig: it fails in BCBL, check Stanford 
+#https://wiki.ubuntu.com/DashAsBinSh 
+RUN rm /bin/sh && ln -s /bin/bash /bin/sh
