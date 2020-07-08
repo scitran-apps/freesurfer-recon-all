@@ -8,12 +8,10 @@
 #   docker run -v /path/to/your/subject:/input scitran/freesurfer-recon-all
 #
 
-FROM scitran/freesurfer-dev:20200104
-LABEL MAINTAINER="Michael Perry <lmperry@stanford.edu>"
-
-# Create Docker container that can run Matlab (mrDiffusion and afq analysis), ANTs, FSL, mrTrix.
-
-# Start with the Matlab r2018b runtime container
+# FROM scitran/freesurfer-dev:20200104
+# Here we change from the old dev branch to the newest 7.1
+FROM scitran/freesurfer-recon-all:7.1.0
+LABEL MAINTAINER="Garikoitz Lerma <garikoitz@gmail.com>"
 
 
 RUN apt-get update --fix-missing \
