@@ -7,11 +7,29 @@
 # Example usage:
 #   docker run -v /path/to/your/subject:/input scitran/freesurfer-recon-all
 #
+FROM ubuntu:xenial
 
-# FROM scitran/freesurfer-dev:20200104
-# Here we change from the old dev branch to the newest 7.1
-FROM scitran/freesurfer-recon-all:7.1.0
-LABEL MAINTAINER="Garikoitz Lerma <garikoitz@gmail.com>"
+# Install dependencies for FreeSurfer
+RUN apt-get update && apt-get -y install \
+        bc \
+        tar \
+        zip \
+        wget \
+        gawk \
+        tcsh \
+        python \
+        libgomp1 \
+        python2.7 \
+        python-pip \
+        perl-modules
+
+# Download Freesurfer dev from MGH and untar to /opt
+RUN wget -N -qO- ftp://surfer.nmr.mgh.harvard.edu/pub/dist/freesurfer/7.1.0/freesurfer-linux-centos6_x86_64-7.1.0.tar.gz | tar -xz -C /opt && chown -R root:root /opt/freesurfer && chmod -R a+rx /opt/freesurfer
+
+# Make directory for flywheel spec (v0)
+ENV FLYWHEEL /flywheel/v0
+RUN mkdir -p ${FLYWHEEL}
+WORKDIR ${FLYWHEEL}
 
 
 RUN apt-get update --fix-missing \

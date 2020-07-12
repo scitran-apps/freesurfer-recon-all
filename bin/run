@@ -5,7 +5,7 @@
 #
 # https://surfer.nmr.mgh.harvard.edu/fswiki/ReconAllOutputFiles
 
-GEAR=freesurfer-recon-all-dev
+GEAR=freesurfer-recon-all
 REPO=scitran
 CONTAINER="[${REPO}/$GEAR]"
 
@@ -60,6 +60,9 @@ ROIs_DIR=${OUTPUT_DIR}/fs/ROIs
 /bin/bash -c 'source $FREESURFER_HOME/FreeSurferEnv.sh &>/dev/null'
 
 export SUBJECTS_DIR=${OUTPUT_DIR}
+
+cp -r $FREESURFER_HOME/subjects/fsaverage_sym $SUBJECTS_DIR/
+
 
 ###############################################################################
 # Parse Configuration and Set Options
@@ -477,7 +480,6 @@ fi
 
 ###############################################################################
 # Write aseg stats to a table
-
 if [[ $ASEG_CSV == "True" ]]; then
   echo -e "$CONTAINER  Exporting stats files csv..."
   asegstats2table -s "${SUBJECT_ID}" \
@@ -518,12 +520,10 @@ echo -e "$CONTAINER  Compressing final outputs..."
 
 # Set file permissions prior to compression
 chmod -R 777 ${WORK_DIR}
-cd /
+cd ${OUTPUT_DIR}
 zip -r /${OUTPUT_DIR}/${GEAR}_"${SUBJECT_ID}"`date +"_D%m-%d-%yT%H-%M"`.zip "${SUBJECT_ID}"
 
 # Now compress the FS_DIR that will be input to the rtp_pipeline
-cd ${OUTPUT_DIR}
-
 zip -r fs.zip fs
 
 
