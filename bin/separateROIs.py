@@ -156,7 +156,7 @@ def segAparc2009():
     fLUT = open(os.path.join(os.getenv('FREESURFER_HOME'),'FreeSurferColorLUT.txt'),'r')
     LUT = fLUT.readlines()
     fLUT.close()
-    cleanLUT = [s for s in LUT if '-' in s and not '#' in s]
+    cleanLUT = [s for s in LUT if ('#' not in s) and ( s != '\n' )]
     # Obtain the labels of aparc+aseg.nii.gz
     index  = [int(s.split()[0]) for s in cleanLUT if (11100<int(s.split()[0]) and int(s.split()[0])<12175) or (0<int(s.split()[0]) and int(s.split()[0])<180) ]
     label  = [str(s.split()[1]) for s in cleanLUT if (11100<int(s.split()[0]) and int(s.split()[0])<12175 ) or (0<int(s.split()[0]) and int(s.split()[0])<180) ]
