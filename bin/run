@@ -288,7 +288,7 @@ if [[ ${HIPPOCAMPUS} == "True" ]]; then
   echo -e "$CONTAINER  Starting segmentation of hippocampal subfields..."
   # OLD: recon-all -subjid "${SUBJECT_ID}" -hippocampal-subfields-T1
   # DEV:
-  segmentHA_T1.sh "${SUBJECT_ID}"
+#  segmentHA_T1.sh "${SUBJECT_ID}"
 
   # if T2 input file
   if [[ -f "$T2_ANAT" ]]; then
@@ -312,7 +312,7 @@ if [[ ${BRAINSTEM} == "True" ]]; then
   echo -e "$CONTAINER  Starting segmentation of brainstem structures..."
   # OLD: recon-all -subjid "${SUBJECT_ID}" -brainstem-structures
   # DEV: 
-  segmentBS.sh "${SUBJECT_ID}"
+ # segmentBS.sh "${SUBJECT_ID}"
   quantifyBrainstemStructures.sh "${MRI_DIR}"/BrainstemStructures.txt
   tr ' ' ',' <"${MRI_DIR}"/BrainstemStructures.txt >${OUTPUT_DIR}/"${SUBJECT_ID}"_BrainstemStructures.csv
 fi
@@ -477,6 +477,22 @@ if [[ ${APARC2009} == "True" ]]; then
     cp ${OUTPUT_DIR}/aparc.a2009s+aseg.nii.gz    ${FS_DIR}/aparc.a2009s+aseg.nii.gz    
     ${FLYWHEEL_BASE}/separateROIs.py -aparc2009 ${FS_DIR}/aparc.a2009s+aseg.nii.gz    
 fi
+
+# Brainstem
+if [[ ${BRAINSTEM} == "True" ]]; then
+    cp ${OUTPUT_DIR}/brainstemSsLabels.FSvoxelSpace.nii.gz ${FS_DIR}/brainstemSsLabels.FSvoxelSpace.nii.gz
+    ${FLYWHEEL_BASE}/separateROIs.py -bs ${FS_DIR}/brainstemSsLabels.FSvoxelSpace.nii.gz
+    
+fi
+
+
+# Hippocampus and Amygdala
+if [[ ${HIPPOCAMPUS} == "True" ]]; then
+    cp ${OUTPUT_DIR}/*h.hippoAmygLabels-T1.FSvoxelSpace.nii.gz ${FS_DIR}/
+    ${FLYWHEEL_BASE}/separateROIs.py -hipp ${FS_DIR}/
+    
+fi
+
 
 ###############################################################################
 # Write aseg stats to a table
