@@ -7,13 +7,29 @@
 # Example usage:
 #   docker run -v /path/to/your/subject:/input scitran/freesurfer-recon-all
 #
+FROM ubuntu:xenial
 
-FROM scitran/freesurfer-dev:20200104
-LABEL MAINTAINER="Michael Perry <lmperry@stanford.edu>"
+# Install dependencies for FreeSurfer
+RUN apt-get update && apt-get -y install \
+        bc \
+        tar \
+        zip \
+        wget \
+        gawk \
+        tcsh \
+        python \
+        libgomp1 \
+        python2.7 \
+        python-pip \
+        perl-modules
 
-# Create Docker container that can run Matlab (mrDiffusion and afq analysis), ANTs, FSL, mrTrix.
+# Download Freesurfer dev from MGH and untar to /opt
+RUN wget -N -qO- ftp://surfer.nmr.mgh.harvard.edu/pub/dist/freesurfer/7.1.0/freesurfer-linux-centos6_x86_64-7.1.0.tar.gz | tar -xz -C /opt && chown -R root:root /opt/freesurfer && chmod -R a+rx /opt/freesurfer
 
-# Start with the Matlab r2018b runtime container
+# Make directory for flywheel spec (v0)
+ENV FLYWHEEL /flywheel/v0
+RUN mkdir -p ${FLYWHEEL}
+WORKDIR ${FLYWHEEL}
 
 
 RUN apt-get update --fix-missing \
@@ -77,7 +93,7 @@ RUN apt-get update && apt-get install -y --force-yes \
 RUN apt-get install -y libxt-dev libxmu-dev
 ENV FREESURFER_HOME /opt/freesurfer
 
-RUN wget -N -qO- "https://surfer.nmr.mgh.harvard.edu/fswiki/MatlabRuntime?action=AttachFile&do=get&target=runtime2014bLinux.tar.gz" | tar -xz -C $FREESURFER_HOME && chown -R root:root /opt/freesurfer/MCRv84
+RUN wget -N -qO- "https://surfer.nmr.mgh.harvard.edu/fswiki/MatlabRuntime?action=AttachFile&do=get&target=runtime2014bLinux.tar.gz" | tar -xz -C $FREESURFER_HOME && chown -R root:root /opt/freesurfer/MCRv84 && chmod -R a+rx /opt/freesurfer/MCRv84
 
 RUN apt-get install python-pip
 # Install neuropythy
@@ -105,11 +121,25 @@ RUN unzip -j "Buckner_JNeurophysiol11_MNI152.zip" "Buckner_JNeurophysiol11_MNI15
 RUN mv /flywheel/v0/templates/FSL_MNI152_FreeSurferConformed_1mm.nii.gz /flywheel/v0/templates/MNI_152.nii.gz
 
 # Download the MORI ROIs 
-RUN wget --retry-connrefused --waitretry=5 --read-timeout=20 --timeout=15 -t 0 -q -O MORI_ROIs.zip "https://osf.io/zxdt9/download"
-RUN unzip MORI_ROIs.zip -d /flywheel/v0/templates/
+# New files with the cerebellar peduncles from Lisa Brucket, and new eye ROIs
+RUN wget --retry-connrefused --waitretry=5 --read-timeout=20 --timeout=15 -t 0 -q -O MORI_ROIs.zip "https://osf.io/syt9m/download"
+RUN mkdir /flywheel/v0/templates/MNI_JHU_tracts_ROIs/ 
+RUN unzip MORI_ROIs.zip -d /flywheel/v0/templates/MNI_JHU_tracts_ROIs/
 
 # Add Thalamus FS LUT
 COPY FreesurferColorLUT_THALAMUS.txt /flywheel/v0/templates/FreesurferColorLUT_THALAMUS.txt
+
+## Add HCP Atlas and LUT
+# Download LUT
+RUN wget --retry-connrefused --waitretry=5 --read-timeout=20 --timeout=15 -t 0 -q -O LUT_HCP.txt "https://osf.io/rdvfk/download"
+RUN cp LUT_HCP.txt /flywheel/v0/templates/LUT_HCP.txt
+
+RUN wget --retry-connrefused --waitretry=5 --read-timeout=20 --timeout=15 -t 0 -q -O MNI_Glasser_HCP_v1.0.nii.gz "https://osf.io/7vjz9/download"
+RUN cp MNI_Glasser_HCP_v1.0.nii.gz /flywheel/v0/templates/MNI_Glasser_HCP_v1.0.nii.gz
+
+## setup ants SyN.sh
+COPY antsRegistrationSyN.sh /usr/bin/antsRegistrationSyN.sh
+RUN echo "export ANTSPATH=/usr/bin/" >> ~/.bashrc
 
 # Copy and configure run script and metadata code
 COPY bin/run \
@@ -129,4 +159,7 @@ WORKDIR ${FLYWHEEL}
 # Run the run.sh script on entry.
 ENTRYPOINT ["/flywheel/v0/run"]
 
-
+#make it work under singularity 
+# RUN ldconfig: it fails in BCBL, check Stanford 
+#https://wiki.ubuntu.com/DashAsBinSh 
+RUN rm /bin/sh && ln -s /bin/bash /bin/sh

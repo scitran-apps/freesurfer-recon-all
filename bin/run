@@ -38,12 +38,6 @@ export PERL5LIB=/opt/freesurfer/mni/lib/perl5/5.8.5
 export MNI_PERL5LIB=/opt/freesurfer/mni/lib/perl5/5.8.5
 export XAPPLRESDIR=/opt/freesurfer/MCRv84/X11/app-defaults
 export PATH=/opt/freesurfer/bin:/opt/freesurfer/fsfast/bin:/opt/freesurfer/tktools:/opt/freesurfer/mni/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-
-# Source FreeSurferEnv.sh then set subjects_dir
-/bin/bash -c 'source $FREESURFER_HOME/FreeSurferEnv.sh &>/dev/null'
-
-export SUBJECTS_DIR=/opt/freesurfer/subjects
-
 ###############################################################################
 # Configure paths
 
@@ -56,10 +50,19 @@ ANAT_DIR_3=${INPUT_DIR}/t1w_anatomical_3
 ANAT_DIR_4=${INPUT_DIR}/t1w_anatomical_4
 ANAT_DIR_5=${INPUT_DIR}/t1w_anatomical_5
 T2_DIR=${INPUT_DIR}/t2w_anatomical
-LICENSE_FILE=${FREESURFER_HOME}/.license
+LICENSE_FILE=${OUTPUT_DIR}/.license
 TEMPLATES=${FLYWHEEL_BASE}/templates
 MORI_DIR=${FLYWHEEL_BASE}/templates/MNI_JHU_tracts_ROIs
-ROIs=${OUTPUT_DIR}/ROIs
+FS_DIR=${OUTPUT_DIR}/fs
+ROIs_DIR=${OUTPUT_DIR}/fs/ROIs
+
+# Source FreeSurferEnv.sh then set subjects_dir
+/bin/bash -c 'source $FREESURFER_HOME/FreeSurferEnv.sh &>/dev/null'
+
+export SUBJECTS_DIR=${OUTPUT_DIR}
+
+cp -r $FREESURFER_HOME/subjects/fsaverage_sym $SUBJECTS_DIR/
+
 
 ###############################################################################
 # Parse Configuration and Set Options
@@ -89,15 +92,16 @@ ASEG_CSV=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -a`
 HIPPOCAMPUS=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -c`
 BRAINSTEM=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -b`
 THALAMUS=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -t`
+HCP=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -g`
 NEUROPYTHY=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -p`
 REGISTER_SURFACES=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -r`
 CEREBELLUM=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -e`
 MORI=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -m` 
 APARC2009=`${FLYWHEEL_BASE}/parse_config.py --json_file=${CONFIG_FILE} -aparc2009`
 # Make and link the subject's directory
-WORK_DIR=/"${SUBJECT_ID}"
-ln -sfn ${SUBJECTS_DIR}/"${SUBJECT_ID}" ${WORK_DIR}
-
+WORK_DIR=${OUTPUT_DIR}/"${SUBJECT_ID}"
+#ln -sfn ${SUBJECTS_DIR}/"${SUBJECT_ID}" ${WORK_DIR}
+export FS_LICENSE=${LICENSE_FILE}
 
 ###############################################################################
 # Check for anatomical NIfTI or DICOM archive
@@ -163,8 +167,8 @@ if [[  ${RECON_ALL_OPTS} == "False" ]];then
   echo -e "checking if the old freesurfer-recon-all*.zip is there"
   FS_ARCHIVE=$(find ${OUTPUT_DIR}/* -name "freesurfer-recon-all*.zip")
   if [[ -f "$FS_ARCHIVE" ]]; then
-      echo -e "unzipping old recon-all*.zip"
-      unzip -foq "${FS_ARCHIVE}" -d ${OUTPUT_DIR}
+      echo -e "unzipping existing ${FS_ARCHIVE}"
+      unzip -oq "${FS_ARCHIVE}" -d "${OUTPUT_DIR}"
   else
       echo -e "$CONTAINER We cannot find existing .zip file"
       echo "$CONTAINER  GEAR FAILED... Exiting(1)"
@@ -189,6 +193,14 @@ fi
 
 MRI_DIR=${SUBJECTS_DIR}/"${SUBJECT_ID}"/mri
 
+if [[ ! -d $FS_DIR ]]; then
+  mkdir ${FS_DIR}
+fi
+
+if [[ ! -d $ROIs_DIR ]]; then
+  mkdir ${ROIs_DIR}
+fi
+
 # Segmentation of Cerebellum 
 if [[ ${CEREBELLUM} == "True" ]]; then
   echo -e "$CONTAINER starting segmentation of cerebellum"
@@ -197,65 +209,77 @@ if [[ ${CEREBELLUM} == "True" ]]; then
   mri_binarize --min 0.1 --i ${MRI_DIR}/brainmask.mgz --o ${MRI_DIR}/binbrainmask.nii.gz
   mri_binarize --min 0.1 --i ${TEMPLATES}/MNI_152.nii.gz --o ${MRI_DIR}/binMNI_152.nii.gz
   # calculate the transformation
-  antsRegistration -d 3 -v 0                 									\
-		-o ${MRI_DIR}/ants																	\
-		-r [${MRI_DIR}/binbrainmask.nii.gz,${MRI_DIR}/binMNI_152.nii.gz,1] 		\
-		-t Syn[0.1, 3, 0]														\
-		-c [100x75x20x0, 0, 10]													\
-		-m CC[${MRI_DIR}/brainmask.nii.gz, ${TEMPLATES}/MNI_152.nii.gz,1,4]		\
-		-f 4x3x2x1																\
-		-s 1x1x0x0																\
-		-x [${MRI_DIR}/binbrainmask.nii.gz, ${MRI_DIR}/binMNI_152.nii.gz]
+  antsRegistrationSyN.sh -d 3 -o ${MRI_DIR}/ants                                \
+        -f ${MRI_DIR}/brainmask.nii.gz -m ${TEMPLATES}/MNI_152.nii.gz
   # apply both affine and nonlinear transofrmation
-  antsApplyTransforms -d 3 														\
-		-i ${TEMPLATES}/Buckner_CB.nii.gz									\
-		-r ${MRI_DIR}/brainmask.nii.gz											\
-		-n Linear																\
-		-t ${MRI_DIR}/ants1Warp.nii.gz											\
-		-t ${MRI_DIR}/ants0GenericAffine.mat									\
-		-o ${MRI_DIR}/buckner2011_cerebellum.nii.gz
+  antsApplyTransforms -d 3                                                         \
+        -i ${TEMPLATES}/Buckner_CB.nii.gz                                    \
+        -r ${MRI_DIR}/brainmask.nii.gz                                            \
+        -n GenericLabel[Linear]                                                 \
+         -t ${MRI_DIR}/ants1Warp.nii.gz                                            \
+        -t ${MRI_DIR}/ants0GenericAffine.mat                                    \
+        -o ${MRI_DIR}/buckner2011_cerebellum.nii.gz
   # copy it to output dir
   mv ${MRI_DIR}/buckner2011_cerebellum.nii.gz \
-			${OUTPUT_DIR}/buckner2011_cerebellum.nii.gz
+            ${OUTPUT_DIR}/buckner2011_cerebellum.nii.gz
 fi
-if [[ ! -d $ROIs ]]; then
-  mkdir ${OUTPUT_DIR}/ROIs
-fi
-# transform MORI to native space
+# transform MORI to native spac
+# TODO: add e
 if [[ ${MORI} == "True" ]]; then
   echo -e "$CONTRAINER starting transform MORI"
   if [[ ${CEREBELLUM} != "True" ]]; then
-	# Create binary mask of brainmask.mgz and MNI_152
+    # Create binary mask of brainmask.mgz and MNI_152
+    mri_convert  ${MRI_DIR}/brainmask.mgz ${MRI_DIR}/brainmask.nii.gz
+    mri_binarize --min 0.1 --i ${MRI_DIR}/brainmask.mgz --o ${MRI_DIR}/binbrainmask.nii.gz
+    # mri_binarize --min 0.1 --i ${TEMPLATES}/MNI_152.nii.gz --o ${MRI_DIR}/binMNI_152.nii.gz
+    mri_binarize --min 0.1 --i ${MORI_DIR}/FSL_MNI152_FreeSurferConformed_1mm.nii.gz --o ${MRI_DIR}/binMNI_152.nii.gz
+  # calculate the transformation
+  antsRegistrationSyN.sh -d 3 -o ${MRI_DIR}/ants                                \
+        -f ${MRI_DIR}/brainmask.nii.gz -m ${TEMPLATES}/MNI_152.nii.gz
+  # apply both affine and nonlinear transofrmation
+  fi
+  for ROI in `ls ${MORI_DIR}/*`; do
+    ROIname=$(basename -- "$ROI"); ROIname="${ROIname%.nii.gz}"  
+    antsApplyTransforms -d 3                                                         \
+        -i ${MORI_DIR}/${ROIname}.nii.gz                                    \
+        -r ${MRI_DIR}/brainmask.nii.gz                                            \
+        -n GenericLabel[Linear]                                                 \
+         -t ${MRI_DIR}/ants1Warp.nii.gz                                            \
+        -t ${MRI_DIR}/ants0GenericAffine.mat                                    \
+        -o ${MRI_DIR}/MORI_${ROIname}.nii.gz
+    
+    mri_binarize --min 0.1 --i ${MRI_DIR}/MORI_${ROIname}.nii.gz \
+                        --o ${ROIs_DIR}/${ROIname}.nii.gz
+    rm ${MRI_DIR}/MORI_${ROIname}.nii.gz 
+  done
+fi
+
+# transform HCP atlas to native space
+if [[ ${HCP} == "True" ]]; then
+  echo -e "$CONTRAINER starting transform HCP atlas to native space"
+  if [[ ${CEREBELLUM} != "True" ]]; then
+    # Create binary mask of brainmask.mgz and MNI_152
     mri_convert  ${MRI_DIR}/brainmask.mgz ${MRI_DIR}/brainmask.nii.gz
     mri_binarize --min 0.1 --i ${MRI_DIR}/brainmask.mgz --o ${MRI_DIR}/binbrainmask.nii.gz
     mri_binarize --min 0.1 --i ${TEMPLATES}/MNI_152.nii.gz --o ${MRI_DIR}/binMNI_152.nii.gz
     # calculate the transformation
-    antsRegistration -d 3 -v 0                 									\
-		-o ${MRI_DIR}/ants																	\
-		-r [${MRI_DIR}/binbrainmask.nii.gz,${MRI_DIR}/binMNI_152.nii.gz,1] 		\
-		-t Syn[0.1, 3, 0]														\
-		-c [100x75x20x0, 0, 10]													\
-		-m CC[${MRI_DIR}/brainmask.nii.gz, ${TEMPLATES}/MNI_152.nii.gz,1,4]		\
-		-f 4x3x2x1																\
-		-s 1x1x0x0																\
-		-x [${MRI_DIR}/binbrainmask.nii.gz, ${MRI_DIR}/binMNI_152.nii.gz]
+    antsRegistrationSyN.sh -d 3 -o ${MRI_DIR}/ants                              \
+        -f ${MRI_DIR}/brainmask.nii.gz -m ${TEMPLATES}/MNI_152.nii.gz
   fi
-  for ROI in `ls ${MORI_DIR}/*`; do
-    ROIname=$(basename -- "$ROI"); ROIname="${ROIname%.nii.gz}"  
-    antsApplyTransforms -d 3 														\
-		-i ${MORI_DIR}/${ROIname}.nii.gz									\
-		-r ${MRI_DIR}/brainmask.nii.gz											\
-		-n Linear																\
-		-t ${MRI_DIR}/ants1Warp.nii.gz											\
-		-t ${MRI_DIR}/ants0GenericAffine.mat									\
-		-o ${MRI_DIR}/MORI_${ROIname}.nii.gz
-    
-    mri_binarize --min 0.1 --i ${MRI_DIR}/MORI_${ROIname}.nii.gz \
-						--o ${OUTPUT_DIR}/ROIs/${ROIname}.nii.gz
-    rm ${MRI_DIR}/MORI_${ROIname}.nii.gz 
-  done
+  # apply both affine and nonlinear transofrmation
+  antsApplyTransforms -d 3                                                      \
+        -i ${TEMPLATES}/MNI_Glasser_HCP_v1.0.nii.gz                             \
+        -r ${MRI_DIR}/brainmask.nii.gz                                          \
+        -n GenericLabel[Linear]                                                 \
+        -t ${MRI_DIR}/ants1Warp.nii.gz                                          \
+        -t ${MRI_DIR}/ants0GenericAffine.mat                                    \
+        -o ${MRI_DIR}/Glasser_HCP_v1.0.nii.gz
+  # copy it to output dir
+  mv ${MRI_DIR}/Glasser_HCP_v1.0.nii.gz          \
+            ${OUTPUT_DIR}/Glasser_HCP_v1.0.nii.gz
 fi
- 	
+
+    
 export LD_LIBRARY_PATH=/opt/freesurfer/MCRv84/runtime/glnxa64:/opt/freesurfer/MCRv84/bin/glnxa64:/opt/freesurfer/MCRv84/sys/os/glnxa64:/opt/freesurfer/MCRv84/sys/java/jre/glnxa64/jre/lib/amd64/native_threads:/opt/freesurfer/MCRv84/sys/java/jre/glnxa64/jre/lib/amd64/server:/opt/freesurfer/MCRv84/sys/java/jre/glnxa64/jre/lib/amd64
 
 
@@ -409,38 +433,53 @@ if [[ $CONVERT_VOLUMES == "True" ]]; then
   echo -e "$CONTAINER  Converting volumes to NIfTI files..."
   for i in $mri_mgz_files; do
     mri_convert -i "${MRI_DIR}"/$i -o ${OUTPUT_DIR}/`basename $i .mgz`.nii.gz
+    mri_convert -i "${MRI_DIR}"/$i -o ${FS_DIR}/`basename $i .mgz`.nii.gz
   done
 
 fi
 
 ##############################################################################
 # Write ROIs separately into individual files
+cp ${OUTPUT_DIR}/aparc+aseg.nii.gz   ${FS_DIR}/aparc+aseg.nii.gz
+
 # Cerebellum
 if [[ ${CEREBELLUM} == "True" ]]; then
-	${FLYWHEEL_BASE}/separateROIs.py -cb ${OUTPUT_DIR}/buckner2011_cerebellum.nii.gz 
+    cp ${OUTPUT_DIR}/buckner2011_cerebellum.nii.gz ${FS_DIR}/buckner2011_cerebellum.nii.gz 
+    ${FLYWHEEL_BASE}/separateROIs.py -cb ${FS_DIR}/buckner2011_cerebellum.nii.gz 
 fi
 
 # Thalamic Nuclei
 if [[ ${THALAMUS} == "True" ]]; then
-	# separate nuclei from the ThalamicNuclei.T1.FSvoxelSpace.nii.gz
-	# separate ROIs
-	${FLYWHEEL_BASE}/separateROIs.py -ThN ${OUTPUT_DIR}/ThalamicNuclei.T1.FSvoxelSpace.nii.gz \
-									 -ThLUT ${TEMPLATES}/FreesurferColorLUT_THALAMUS.txt 
-	
+    # separate nuclei from the ThalamicNuclei.T1.FSvoxelSpace.nii.gz
+    # separate ROIs
+    cp ${OUTPUT_DIR}/ThalamicNuclei.T1.FSvoxelSpace.nii.gz ${FS_DIR}/ThalamicNuclei.T1.FSvoxelSpace.nii.gz
+    ${FLYWHEEL_BASE}/separateROIs.py -ThN ${FS_DIR}/ThalamicNuclei.T1.FSvoxelSpace.nii.gz \
+                                     -ThLUT ${TEMPLATES}/FreesurferColorLUT_THALAMUS.txt 
+    
+fi
+
+# HCP Atlas
+if [[ ${HCP} == "True" ]]; then
+    # separate ROIs
+    cp ${OUTPUT_DIR}/Glasser_HCP_v1.0.nii.gz ${FS_DIR}/Glasser_HCP_v1.0.nii.gz
+    ${FLYWHEEL_BASE}/separateROIs.py -hcp ${FS_DIR}/Glasser_HCP_v1.0.nii.gz \
+                                     -hcpLUT ${TEMPLATES}/LUT_HCP.txt
+
 fi
 
 if [[ ${NEUROPYTHY} == "True" ]]; then
-	${FLYWHEEL_BASE}/separateROIs.py -benV ${OUTPUT_DIR}/benson14_varea.nii.gz
+    cp ${OUTPUT_DIR}/benson14_varea.nii.gz  ${FS_DIR}/benson14_varea.nii.gz
+    ${FLYWHEEL_BASE}/separateROIs.py -benV ${FS_DIR}/benson14_varea.nii.gz
 
 fi
 
 if [[ ${APARC2009} == "True" ]]; then
-	${FLYWHEEL_BASE}/separateROIs.py -aparc2009 ${OUTPUT_DIR}/aparc.a2009s+aseg.nii.gz	
+    cp ${OUTPUT_DIR}/aparc.a2009s+aseg.nii.gz    ${FS_DIR}/aparc.a2009s+aseg.nii.gz    
+    ${FLYWHEEL_BASE}/separateROIs.py -aparc2009 ${FS_DIR}/aparc.a2009s+aseg.nii.gz    
 fi
 
 ###############################################################################
 # Write aseg stats to a table
-
 if [[ $ASEG_CSV == "True" ]]; then
   echo -e "$CONTAINER  Exporting stats files csv..."
   asegstats2table -s "${SUBJECT_ID}" \
@@ -477,13 +516,15 @@ fi
 
 ###############################################################################
 # Compress Recon-all output directory
-
 echo -e "$CONTAINER  Compressing final outputs..."
 
 # Set file permissions prior to compression
 chmod -R 777 ${WORK_DIR}
-cd /
+cd ${OUTPUT_DIR}
 zip -r /${OUTPUT_DIR}/${GEAR}_"${SUBJECT_ID}"`date +"_D%m-%d-%yT%H-%M"`.zip "${SUBJECT_ID}"
+
+# Now compress the FS_DIR that will be input to the rtp_pipeline
+zip -r fs.zip fs
 
 
 ###############################################################################
