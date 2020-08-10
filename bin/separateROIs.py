@@ -267,11 +267,11 @@ def separateROIs(args):
             createHemiMaskFromAseg(aseg) 
         segCB()
     if args.bs:
-	print('separating brainstem')
-	segBrainstem()
+		print('separating brainstem')
+		segBrainstem()
     if args.hipp:
-	print('separating hippocampus and amygdala')
-	segHippAmy()
+		print('separating hippocampus and amygdala')
+		segHippAmy()
 
 
 
