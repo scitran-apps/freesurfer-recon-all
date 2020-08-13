@@ -156,7 +156,7 @@ def segAparc2009():
     fLUT = open(os.path.join(os.getenv('FREESURFER_HOME'),'FreeSurferColorLUT.txt'),'r')
     LUT = fLUT.readlines()
     fLUT.close()
-    cleanLUT = [s for s in LUT if '-' in s and not '#' in s]
+    cleanLUT = [s for s in LUT if ('#' not in s) and ( s != '\n' )]
     # Obtain the labels of aparc+aseg.nii.gz
     index  = [int(s.split()[0]) for s in cleanLUT if (11100<int(s.split()[0]) and int(s.split()[0])<12175) or (0<int(s.split()[0]) and int(s.split()[0])<180) ]
     label  = [str(s.split()[1]) for s in cleanLUT if (11100<int(s.split()[0]) and int(s.split()[0])<12175 ) or (0<int(s.split()[0]) and int(s.split()[0])<180) ]
@@ -178,7 +178,64 @@ def segAparc2009():
             print(cmdstr)
             sp.call(cmdstr, shell=True)
 
- 
+def segBrainstem():
+    import os
+    import subprocess as sp
+    (head, tail) = os.path.split(args.bs)
+    fLUT = open(os.path.join(os.getenv('FREESURFER_HOME'),'FreeSurferColorLUT.txt'),'r')
+    LUT = fLUT.readlines()
+    fLUT.close()
+    cleanLUT = [s for s in LUT if ('#' not in s) and ( s != '\n' )]
+    # Obtain the labels of brainstemSsLabels.FSvoxelSpace.nii.gz
+    index  = [int(s.split()[0]) for s in cleanLUT if (173<=int(s.split()[0]) and int(s.split()[0])<=178) ]
+    label  = [str(s.split()[1]) for s in cleanLUT if (173<=int(s.split()[0]) and int(s.split()[0])<=178) ]
+
+    for i in range(len(index)):
+        #  extract nuclei
+        roiname = os.path.join(head, 'ROIs', str(label[i] + '.nii.gz'))
+        cmdstr = str('mri_extract_label -exit_none_found ' + args.bs + ' ' + 
+                str(index[i]) + ' ' + roiname )
+        print(cmdstr)
+        sp.call(cmdstr, shell=True)
+        cmdstr = str('mri_binarize ' + '--min 0.1 ' + '--i ' + roiname + 
+                    ' --o ' + roiname) 
+        print(cmdstr)
+        sp.call(cmdstr, shell=True)
+
+def segHippAmy():
+    import os
+    import subprocess as sp
+    fLUT = open(os.path.join(os.getenv('FREESURFER_HOME'),'FreeSurferColorLUT.txt'),'r')
+    LUT = fLUT.readlines()
+    fLUT.close()
+    cleanLUT = [s for s in LUT if ('#' not in s) and ( s != '\n' )]
+    # Obtain the labels of *h.hippoAmygLabels-T1.FSvoxelSpace.nii.gz
+    index  = [int(s.split()[0]) for s in cleanLUT if (211<=int(s.split()[0]) and int(s.split()[0])<=246 ) or (7001<=int(s.split()[0]) and int(s.split()[0])<=7101) or int(s.split()[0])==203 ]
+    label  = [str(s.split()[1]) for s in cleanLUT if (211<=int(s.split()[0]) and int(s.split()[0])<=246 ) or (7001<=int(s.split()[0]) and int(s.split()[0])<=7101) or int(s.split()[0])==203 ]
+
+    for i in range(len(index)):
+        #  extract from Left hemi
+        roiname = os.path.join(args.hipp, 'ROIs', str('Left-' + label[i] + '.nii.gz'))
+        cmdstr = str('mri_extract_label -exit_none_found ' + args.hipp + 'lh.hippoAmygLabels-T1.FSvoxelSpace.nii.gz' + ' ' + 
+                str(index[i]) + ' ' + roiname )
+        print(cmdstr)
+        sp.call(cmdstr, shell=True)
+        cmdstr = str('mri_binarize ' + '--min 0.1 ' + '--i ' + roiname + 
+                    ' --o ' + roiname) 
+        print(cmdstr)
+        sp.call(cmdstr, shell=True)
+        # extract from Right hemi
+        roiname = os.path.join(args.hipp, 'ROIs', str('Right-' + label[i] + '.nii.gz'))
+        cmdstr = str('mri_extract_label -exit_none_found ' + args.hipp + 'rh.hippoAmygLabels-T1.FSvoxelSpace.nii.gz' + ' ' + 
+                str(index[i]) + ' ' + roiname )
+        print(cmdstr)
+        sp.call(cmdstr, shell=True)
+        cmdstr = str('mri_binarize ' + '--min 0.1 ' + '--i ' + roiname + 
+                    ' --o ' + roiname) 
+        print(cmdstr)
+        sp.call(cmdstr, shell=True)
+
+
 
 
 def separateROIs(args):
@@ -209,7 +266,12 @@ def separateROIs(args):
         if not os.path.isfile(str(head + '/lh.AsegMask.nii.gz')):
             createHemiMaskFromAseg(aseg) 
         segCB()
-
+    if args.bs:
+        print('separating brainstem')
+        segBrainstem()
+    if args.hipp:
+        print('separating hippocampus and amygdala')
+        segHippAmy()
 
 
 
@@ -232,6 +294,8 @@ if __name__ == '__main__':
     ap.add_argument('-aparc2009', type=str, help='Full path to aparc.2009.nii.gz')
     ap.add_argument('-benV', type=str, help='Full path to benson Varea image')
     ap.add_argument('-cb', type=str, help='Full path to Bucker cerebellm image')
+    ap.add_argument('-bs', type=str, help='Full path to brainstem image')
+    ap.add_argument('-hipp', type=str, help='path contains left and right hippocampus and amygdala image')
     args = ap.parse_args()
     separateROIs(args)
     

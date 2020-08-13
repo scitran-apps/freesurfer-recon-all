@@ -174,10 +174,10 @@ if [[  ${RECON_ALL_OPTS} == "False" ]];then
       echo "$CONTAINER  GEAR FAILED... Exiting(1)"
       exit 1
   fi
-  echo -e "linking SUBJECTS_DIR directory to freesurfer"
-  ln -sfn ${OUTPUT_DIR}/${SUBJECT_ID} ${SUBJECTS_DIR}/"${SUBJECT_ID}"
-  else 
-# Run recon-all
+  # echo -e "linking SUBJECTS_DIR directory to freesurfer"
+  # ln -sfn ${OUTPUT_DIR}/${SUBJECT_ID} ${SUBJECTS_DIR}/"${SUBJECT_ID}"
+else 
+    # Run recon-all
     echo -e "Running recon all..."
     command=$(echo -e "time recon-all -i "${ANATOMICAL}" "${ADD_INPUTS}" -subjid "${SUBJECT_ID}" ${RECON_ALL_OPTS}")
     echo -e "${command}"
@@ -477,6 +477,25 @@ if [[ ${APARC2009} == "True" ]]; then
     cp ${OUTPUT_DIR}/aparc.a2009s+aseg.nii.gz    ${FS_DIR}/aparc.a2009s+aseg.nii.gz    
     ${FLYWHEEL_BASE}/separateROIs.py -aparc2009 ${FS_DIR}/aparc.a2009s+aseg.nii.gz    
 fi
+
+
+# Brainstem
+if [[ ${BRAINSTEM} == "True" ]]; then
+    cp ${OUTPUT_DIR}/brainstemSsLabels.FSvoxelSpace.nii.gz ${FS_DIR}/brainstemSsLabels.FSvoxelSpace.nii.gz
+    ${FLYWHEEL_BASE}/separateROIs.py -bs ${FS_DIR}/brainstemSsLabels.FSvoxelSpace.nii.gz
+    
+fi
+
+
+# Hippocampus and Amygdala
+if [[ ${HIPPOCAMPUS} == "True" ]]; then
+    cp ${OUTPUT_DIR}/*h.hippoAmygLabels-T1.FSvoxelSpace.nii.gz ${FS_DIR}/
+    ${FLYWHEEL_BASE}/separateROIs.py -hipp ${FS_DIR}/
+    
+fi
+
+
+
 
 ###############################################################################
 # Write aseg stats to a table
