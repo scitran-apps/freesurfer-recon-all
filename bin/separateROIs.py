@@ -224,7 +224,7 @@ def segHippAmy():
                     ' --o ' + roiname) 
         print(cmdstr)
         sp.call(cmdstr, shell=True)
-		# extract from Right hemi
+        # extract from Right hemi
         roiname = os.path.join(args.hipp, 'ROIs', str('Right-' + label[i] + '.nii.gz'))
         cmdstr = str('mri_extract_label -exit_none_found ' + args.hipp + 'rh.hippoAmygLabels-T1.FSvoxelSpace.nii.gz' + ' ' + 
                 str(index[i]) + ' ' + roiname )

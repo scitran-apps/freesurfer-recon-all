@@ -174,10 +174,10 @@ if [[  ${RECON_ALL_OPTS} == "False" ]];then
       echo "$CONTAINER  GEAR FAILED... Exiting(1)"
       exit 1
   fi
-  echo -e "linking SUBJECTS_DIR directory to freesurfer"
-  ln -sfn ${OUTPUT_DIR}/${SUBJECT_ID} ${SUBJECTS_DIR}/"${SUBJECT_ID}"
-  else 
-# Run recon-all
+  # echo -e "linking SUBJECTS_DIR directory to freesurfer"
+  # ln -sfn ${OUTPUT_DIR}/${SUBJECT_ID} ${SUBJECTS_DIR}/"${SUBJECT_ID}"
+else 
+    # Run recon-all
     echo -e "Running recon all..."
     command=$(echo -e "time recon-all -i "${ANATOMICAL}" "${ADD_INPUTS}" -subjid "${SUBJECT_ID}" ${RECON_ALL_OPTS}")
     echo -e "${command}"
