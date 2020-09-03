@@ -11,10 +11,10 @@
   "flywheel": "0",
   "version": "7.1.1-02",
   "custom": {
-    "docker-image": "garikoitz/freesurfer-recon-all:7.1.1-02",
+    "docker-image": "scitran/freesurfer-recon-all:7.1.1-02",
     "gear-builder": {
         "category": "analysis",
-        "image": "garikoitz/freesurfer-recon-all:7.1.1-02"
+        "image": "scitran/freesurfer-recon-all:7.1.1-02"
     },
     "flywheel": {
       "suite": "FreeSurfer"
