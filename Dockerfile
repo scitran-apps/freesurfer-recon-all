@@ -112,13 +112,14 @@ ENV FLYWHEEL /flywheel/v0
 RUN mkdir -p ${FLYWHEEL}
 RUN mkdir /flywheel/v0/templates/
 
-# Download and unzip Buckner's Cerebellum atlas
+
+
+# Download and copy Cerebellum atlas
+# see ref:https://afni.nimh.nih.gov/afni/community/board/read.php?1,142026
 RUN cd $WORKDIR
-RUN wget ftp://surfer.nmr.mgh.harvard.edu/pub/data/Buckner_JNeurophysiol11_MNI152.zip
-RUN unzip -j "Buckner_JNeurophysiol11_MNI152.zip" "Buckner_JNeurophysiol11_MNI152/Buckner2011_17Networks_MNI152_FreeSurferConformed1mm_LooseMask.nii.gz" -d "/flywheel/v0/templates/"
-RUN mv /flywheel/v0/templates/Buckner2011_17Networks_MNI152_FreeSurferConformed1mm_LooseMask.nii.gz /flywheel/v0/templates/Buckner_CB.nii.gz
-RUN unzip -j "Buckner_JNeurophysiol11_MNI152.zip" "Buckner_JNeurophysiol11_MNI152/FSL_MNI152_FreeSurferConformed_1mm.nii.gz" -d "/flywheel/v0/templates/"
-RUN mv /flywheel/v0/templates/FSL_MNI152_FreeSurferConformed_1mm.nii.gz /flywheel/v0/templates/MNI_152.nii.gz
+RUN wget http://afni.nimh.nih.gov/pub/dist/atlases/SUIT_Cerebellum//SUIT_2.6_1/AFNI_SUITCerebellum.tgz
+RUN tar -xf AFNI_SUITCerebellum.tgz --directory /flywheel/v0/templates/
+
 
 # Download the MORI ROIs 
 # New files with the cerebellar peduncles from Lisa Brucket, and new eye ROIs
@@ -140,6 +141,14 @@ RUN cp MNI_Glasser_HCP_v1.0.nii.gz /flywheel/v0/templates/MNI_Glasser_HCP_v1.0.n
 ## setup ants SyN.sh
 COPY antsRegistrationSyN.sh /usr/bin/antsRegistrationSyN.sh
 RUN echo "export ANTSPATH=/usr/bin/" >> ~/.bashrc
+
+## setup 3dcalc from AFNI
+COPY bin/3dcalc bin/libf2c.so bin/libmri.so /usr/bin/
+RUN echo "export PATH=/usr/bin/:$PATH" >> ~/.bashrc
+
+## setup fixAllSegmentations 
+COPY compiled/fixAllSegmentations /usr/bin/fixAllSegmentations
+RUN chmod +x /usr/bin/fixAllSegmentations
 
 # Copy and configure run script and metadata code
 COPY bin/run \
