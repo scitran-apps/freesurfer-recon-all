@@ -55,7 +55,7 @@ TEMPLATES=${FLYWHEEL_BASE}/templates
 MORI_DIR=${FLYWHEEL_BASE}/templates/MNI_JHU_tracts_ROIs
 FS_DIR=${OUTPUT_DIR}/fs
 ROIs_DIR=${OUTPUT_DIR}/fs/ROIs
-
+export MCR_CACHE_ROOT=${OUTPUT_DIR}
 # Source FreeSurferEnv.sh then set subjects_dir
 /bin/bash -c 'source $FREESURFER_HOME/FreeSurferEnv.sh &>/dev/null'
 
