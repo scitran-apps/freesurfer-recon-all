@@ -317,7 +317,7 @@ if [[ ${THALAMUS} == "True" ]]; then
     fixAllSegmentations  ${SUBJECTS_DIR}/"${SUBJECT_ID}"
     # With nightly builds, "${MRI_DIR}"/ThalamicNuclei.${SUFFIX}.T1.volumes.txt
     # ${SUFFIX} is unstable
-    ln -sfn "${MRI_DIR}"/ThalamicNuclei.*.T1.volumes.txt "${MRI_DIR}"/ThalamicNuclei.T1.volumes.txt
+    ln -sfn "${MRI_DIR}"/ThalamicNuclei.*.T1.fixed_FRAC_0.6.volumes.txt "${MRI_DIR}"/ThalamicNuclei.T1.volumes.txt
     tr ' ' ',' <"${MRI_DIR}"/ThalamicNuclei.T1.volumes.txt >${OUTPUT_DIR}/"${SUBJECT_ID}"_ThalamicNuclei.T1.volumes.csv
 
 fi
