@@ -226,7 +226,7 @@ fi
 # transform MORI to native spac
 # TODO: add e
 if [[ ${MORI} == "True" ]]; then
-  echo -e "$CONTRAINER starting transform MORI"
+  echo -e "$CONTAINER starting transform MORI"
   if [[ ${CEREBELLUM} != "True" ]]; then
     # Create binary mask of brainmask.mgz and MNI_152
     mri_convert  ${MRI_DIR}/brainmask.mgz ${MRI_DIR}/brainmask.nii.gz

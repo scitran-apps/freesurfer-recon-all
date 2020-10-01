@@ -122,7 +122,7 @@ RUN mv /flywheel/v0/templates/FSL_MNI152_FreeSurferConformed_1mm.nii.gz /flywhee
 
 # Download the MORI ROIs 
 # New files with the cerebellar peduncles from Lisa Brucket, and new eye ROIs
-RUN wget --retry-connrefused --waitretry=5 --read-timeout=20 --timeout=15 -t 0 -q -O MORI_ROIs.zip "https://osf.io/syt9m/download"
+RUN wget --retry-connrefused --waitretry=5 --read-timeout=20 --timeout=15 -t 0 -q -O MORI_ROIs.zip "https://osf.io/2hfu8/download"
 RUN mkdir /flywheel/v0/templates/MNI_JHU_tracts_ROIs/ 
 RUN unzip MORI_ROIs.zip -d /flywheel/v0/templates/MNI_JHU_tracts_ROIs/
 
