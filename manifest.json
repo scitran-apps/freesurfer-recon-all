@@ -9,12 +9,12 @@
   "cite": "For citation information, please visit: https://surfer.nmr.mgh.harvard.edu/fswiki/FreeSurferMethodsCitation.",
   "license": "Other",
   "flywheel": "0",
-  "version": "7.1.1-02",
+  "version": "7.1.1-03",
   "custom": {
-    "docker-image": "scitran/freesurfer-recon-all:7.1.1-02",
+    "docker-image": "scitran/freesurfer-recon-all:7.1.1-03",
     "gear-builder": {
         "category": "analysis",
-        "image": "scitran/freesurfer-recon-all:7.1.1-02"
+        "image": "scitran/freesurfer-recon-all:7.1.1-03"
     },
     "flywheel": {
       "suite": "FreeSurfer"
