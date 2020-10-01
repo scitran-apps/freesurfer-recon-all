@@ -55,7 +55,7 @@ TEMPLATES=${FLYWHEEL_BASE}/templates
 MORI_DIR=${FLYWHEEL_BASE}/templates/MNI_JHU_tracts_ROIs
 FS_DIR=${OUTPUT_DIR}/fs
 ROIs_DIR=${OUTPUT_DIR}/fs/ROIs
-
+export MCR_CACHE_ROOT=${OUTPUT_DIR}
 # Source FreeSurferEnv.sh then set subjects_dir
 /bin/bash -c 'source $FREESURFER_HOME/FreeSurferEnv.sh &>/dev/null'
 
@@ -206,22 +206,20 @@ if [[ ${CEREBELLUM} == "True" ]]; then
   echo -e "$CONTAINER starting segmentation of cerebellum"
   # Create binary mask of brainmask.mgz and MNI_152
   mri_convert ${MRI_DIR}/brainmask.mgz ${MRI_DIR}/brainmask.nii.gz
-  mri_binarize --min 0.1 --i ${MRI_DIR}/brainmask.mgz --o ${MRI_DIR}/binbrainmask.nii.gz
-  mri_binarize --min 0.1 --i ${TEMPLATES}/MNI_152.nii.gz --o ${MRI_DIR}/binMNI_152.nii.gz
   # calculate the transformation
   antsRegistrationSyN.sh -d 3 -o ${MRI_DIR}/ants                                \
-        -f ${MRI_DIR}/brainmask.nii.gz -m ${TEMPLATES}/MNI_152.nii.gz
+        -f ${MRI_DIR}/brainmask.nii.gz -m ${MORI_DIR}/FSL_MNI152_FreeSurferConformed_1mm.nii.gz
   # apply both affine and nonlinear transofrmation
   antsApplyTransforms -d 3                                                         \
-        -i ${TEMPLATES}/Buckner_CB.nii.gz                                    \
+        -i ${TEMPLATES}/Cerebellum-MNIsegment.nii.gz                               \
         -r ${MRI_DIR}/brainmask.nii.gz                                            \
         -n GenericLabel[Linear]                                                 \
          -t ${MRI_DIR}/ants1Warp.nii.gz                                            \
         -t ${MRI_DIR}/ants0GenericAffine.mat                                    \
-        -o ${MRI_DIR}/buckner2011_cerebellum.nii.gz
+        -o ${MRI_DIR}/Cerebellum-MNIsegment_ind.nii.gz
   # copy it to output dir
-  mv ${MRI_DIR}/buckner2011_cerebellum.nii.gz \
-            ${OUTPUT_DIR}/buckner2011_cerebellum.nii.gz
+  mv ${MRI_DIR}/Cerebellum-MNIsegment_ind.nii.gz \
+            ${OUTPUT_DIR}/Cerebellum-MNIsegment_ind.nii.gz
 fi
 # transform MORI to native spac
 # TODO: add e
@@ -230,13 +228,10 @@ if [[ ${MORI} == "True" ]]; then
   if [[ ${CEREBELLUM} != "True" ]]; then
     # Create binary mask of brainmask.mgz and MNI_152
     mri_convert  ${MRI_DIR}/brainmask.mgz ${MRI_DIR}/brainmask.nii.gz
-    mri_binarize --min 0.1 --i ${MRI_DIR}/brainmask.mgz --o ${MRI_DIR}/binbrainmask.nii.gz
-    # mri_binarize --min 0.1 --i ${TEMPLATES}/MNI_152.nii.gz --o ${MRI_DIR}/binMNI_152.nii.gz
-    mri_binarize --min 0.1 --i ${MORI_DIR}/FSL_MNI152_FreeSurferConformed_1mm.nii.gz --o ${MRI_DIR}/binMNI_152.nii.gz
-  # calculate the transformation
-  antsRegistrationSyN.sh -d 3 -o ${MRI_DIR}/ants                                \
-        -f ${MRI_DIR}/brainmask.nii.gz -m ${TEMPLATES}/MNI_152.nii.gz
-  # apply both affine and nonlinear transofrmation
+    # calculate the transformation
+    antsRegistrationSyN.sh -d 3 -o ${MRI_DIR}/ants                                \
+        -f ${MRI_DIR}/brainmask.nii.gz -m ${MORI_DIR}/FSL_MNI152_FreeSurferConformed_1mm.nii.gz
+    # apply both affine and nonlinear transofrmation
   fi
   for ROI in `ls ${MORI_DIR}/*`; do
     ROIname=$(basename -- "$ROI"); ROIname="${ROIname%.nii.gz}"  
@@ -260,11 +255,9 @@ if [[ ${HCP} == "True" ]]; then
   if [[ ${CEREBELLUM} != "True" ]]; then
     # Create binary mask of brainmask.mgz and MNI_152
     mri_convert  ${MRI_DIR}/brainmask.mgz ${MRI_DIR}/brainmask.nii.gz
-    mri_binarize --min 0.1 --i ${MRI_DIR}/brainmask.mgz --o ${MRI_DIR}/binbrainmask.nii.gz
-    mri_binarize --min 0.1 --i ${TEMPLATES}/MNI_152.nii.gz --o ${MRI_DIR}/binMNI_152.nii.gz
     # calculate the transformation
     antsRegistrationSyN.sh -d 3 -o ${MRI_DIR}/ants                              \
-        -f ${MRI_DIR}/brainmask.nii.gz -m ${TEMPLATES}/MNI_152.nii.gz
+        -f ${MRI_DIR}/brainmask.nii.gz -m ${MORI_DIR}/FSL_MNI152_FreeSurferConformed_1mm.nii.gz
   fi
   # apply both affine and nonlinear transofrmation
   antsApplyTransforms -d 3                                                      \
@@ -321,9 +314,10 @@ fi
 if [[ ${THALAMUS} == "True" ]]; then
     echo -e "$CONTAINER  Starting segmentation of thalamic nuclei..."
     segmentThalamicNuclei.sh "${SUBJECT_ID}"
+    fixAllSegmentations  ${SUBJECTS_DIR}/"${SUBJECT_ID}"
     # With nightly builds, "${MRI_DIR}"/ThalamicNuclei.${SUFFIX}.T1.volumes.txt
     # ${SUFFIX} is unstable
-    ln -sfn "${MRI_DIR}"/ThalamicNuclei.*.T1.volumes.txt "${MRI_DIR}"/ThalamicNuclei.T1.volumes.txt
+    ln -sfn "${MRI_DIR}"/ThalamicNuclei.*.T1.fixed_FRAC_0.6.volumes.txt "${MRI_DIR}"/ThalamicNuclei.T1.volumes.txt
     tr ' ' ',' <"${MRI_DIR}"/ThalamicNuclei.T1.volumes.txt >${OUTPUT_DIR}/"${SUBJECT_ID}"_ThalamicNuclei.T1.volumes.csv
 
 fi
@@ -435,7 +429,7 @@ if [[ $CONVERT_VOLUMES == "True" ]]; then
     mri_convert -i "${MRI_DIR}"/$i -o ${OUTPUT_DIR}/`basename $i .mgz`.nii.gz
     mri_convert -i "${MRI_DIR}"/$i -o ${FS_DIR}/`basename $i .mgz`.nii.gz
   done
-
+  cp "${MRI_DIR}"/ThalamicNuclei.v12.T1.FSvoxelSpace.fixed_FRAC_0.6.nii.gz "${OUTPUT_DIR}"/ThalamicNuclei.v12.T1.FSvoxelSpace.fixed_FRAC_0.6.nii.gz
 fi
 
 ##############################################################################
@@ -444,16 +438,18 @@ cp ${OUTPUT_DIR}/aparc+aseg.nii.gz   ${FS_DIR}/aparc+aseg.nii.gz
 
 # Cerebellum
 if [[ ${CEREBELLUM} == "True" ]]; then
-    cp ${OUTPUT_DIR}/buckner2011_cerebellum.nii.gz ${FS_DIR}/buckner2011_cerebellum.nii.gz 
-    ${FLYWHEEL_BASE}/separateROIs.py -cb ${FS_DIR}/buckner2011_cerebellum.nii.gz 
+    cp ${OUTPUT_DIR}/Cerebellum-MNIsegment_ind.nii.gz  ${FS_DIR}/Cerebellum-MNIsegment_ind.nii.gz
+    # ${FLYWHEEL_BASE}/separateROIs.py -cb ${FS_DIR}/buckner2011_cerebellum.nii.gz
+    mri_extract_label ${FS_DIR}/Cerebellum-MNIsegment_ind.nii.gz 29 ${FS_DIR}/ROIs/Left-Dentate.nii.gz
+    mri_extract_label ${FS_DIR}/Cerebellum-MNIsegment_ind.nii.gz 30 ${FS_DIR}/ROIs/Right-Dentate.nii.gz
 fi
 
 # Thalamic Nuclei
 if [[ ${THALAMUS} == "True" ]]; then
     # separate nuclei from the ThalamicNuclei.T1.FSvoxelSpace.nii.gz
     # separate ROIs
-    cp ${OUTPUT_DIR}/ThalamicNuclei.T1.FSvoxelSpace.nii.gz ${FS_DIR}/ThalamicNuclei.T1.FSvoxelSpace.nii.gz
-    ${FLYWHEEL_BASE}/separateROIs.py -ThN ${FS_DIR}/ThalamicNuclei.T1.FSvoxelSpace.nii.gz \
+    cp ${OUTPUT_DIR}/ThalamicNuclei.v12.T1.FSvoxelSpace.fixed_FRAC_0.6.nii.gz ${FS_DIR}/ThalamicNuclei.v12.T1.FSvoxelSpace.fixed_FRAC_0.6.nii.gz
+    ${FLYWHEEL_BASE}/separateROIs.py -ThN ${FS_DIR}/ThalamicNuclei.v12.T1.FSvoxelSpace.fixed_FRAC_0.6.nii.gz \
                                      -ThLUT ${TEMPLATES}/FreesurferColorLUT_THALAMUS.txt 
     
 fi
@@ -464,7 +460,26 @@ if [[ ${HCP} == "True" ]]; then
     cp ${OUTPUT_DIR}/Glasser_HCP_v1.0.nii.gz ${FS_DIR}/Glasser_HCP_v1.0.nii.gz
     ${FLYWHEEL_BASE}/separateROIs.py -hcp ${FS_DIR}/Glasser_HCP_v1.0.nii.gz \
                                      -hcpLUT ${TEMPLATES}/LUT_HCP.txt
-
+    # create motor and auditory cortex ROIs
+    for hemi in L R
+    do
+        3dcalc -a ${ROIs_DIR}/${hemi}_Primary_Auditory_Cortex.nii.gz \
+               -b ${ROIs_DIR}/${hemi}_Lateral_Belt_Complex.nii.gz \
+               -c ${ROIs_DIR}/${hemi}_Medial_Belt_Complex.nii.gz \
+               -d ${ROIs_DIR}/${hemi}_ParaBelt_Complex.nii.gz \
+               -expr 'step(a+b+c+d)' \
+               -prefix ${ROIs_DIR}/${hemi}_A1_Belt.nii.gz -overwrite
+        3dcalc -a ${ROIs_DIR}/${hemi}_Area_6_anterior.nii.gz \
+               -b ${ROIs_DIR}/${hemi}_Dorsal_area_6.nii.gz \
+               -expr 'step(a+b)' \
+               -prefix ${ROIs_DIR}/${hemi}_dlPremotor.nii.gz -overwrite
+        3dcalc -a ${ROIs_DIR}/${hemi}_Area_3a.nii.gz \
+               -b ${ROIs_DIR}/${hemi}_Primary_Sensory_Cortex.nii.gz \
+               -c ${ROIs_DIR}/${hemi}_Area_1.nii.gz \
+               -d ${ROIs_DIR}/${hemi}_Area_2.nii.gz \
+               -expr 'step(a+b+c+d)' \
+               -prefix ${ROIs_DIR}/${hemi}_S1.nii.gz -overwrite
+    done
 fi
 
 if [[ ${NEUROPYTHY} == "True" ]]; then
@@ -475,7 +490,17 @@ fi
 
 if [[ ${APARC2009} == "True" ]]; then
     cp ${OUTPUT_DIR}/aparc.a2009s+aseg.nii.gz    ${FS_DIR}/aparc.a2009s+aseg.nii.gz    
-    ${FLYWHEEL_BASE}/separateROIs.py -aparc2009 ${FS_DIR}/aparc.a2009s+aseg.nii.gz    
+    ${FLYWHEEL_BASE}/separateROIs.py -aparc2009 ${FS_DIR}/aparc.a2009s+aseg.nii.gz
+    # split Brain Stem to Left and Right
+    mri_convert -at ${MRI_DIR}/transforms/talairach.xfm -rt nearest \
+                    ${ROIs_DIR}/Brain-Stem.nii.gz ${ROIs_DIR}/tmp.nii.gz
+    3dcalc -a ${ROIs_DIR}/tmp.nii.gz -expr 'a*step(-2-x)' -prefix ${ROIs_DIR}/Right-tmp.nii.gz -overwrite
+    3dcalc -a ${ROIs_DIR}/tmp.nii.gz -expr 'a*step(x-2)' -prefix ${ROIs_DIR}/Left-tmp.nii.gz -overwrite
+    mri_convert -ait ${MRI_DIR}/transforms/talairach.xfm -rt nearest \
+                    ${ROIs_DIR}/Right-tmp.nii.gz ${ROIs_DIR}/Right-Brain-Stem.nii.gz
+    mri_convert -ait ${MRI_DIR}/transforms/talairach.xfm -rt nearest \
+                    ${ROIs_DIR}/Left-tmp.nii.gz ${ROIs_DIR}/Left-Brain-Stem.nii.gz
+    rm ${ROIs_DIR}/tmp.nii.gz ${ROIs_DIR}/Right-tmp.nii.gz ${ROIs_DIR}/Left-tmp.nii.gz
 fi
 
 
@@ -493,8 +518,6 @@ if [[ ${HIPPOCAMPUS} == "True" ]]; then
     ${FLYWHEEL_BASE}/separateROIs.py -hipp ${FS_DIR}/
     
 fi
-
-
 
 
 ###############################################################################
