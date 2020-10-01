@@ -47,7 +47,10 @@ def segThalamus():
             cmdstr = str('mri_extract_label ' + diloption[x] + ' ' + args.ThN + ' ' + 
                 str(index[i]) + ' ' + roiname)
             print(cmdstr) 
-            sp.call(cmdstr, shell=True) 
+            a = sp.call(cmdstr, shell=True)
+            if a == 1:
+                os.remove(roiname)
+                continue
             # binarize the ROIs
             cmdstr = str('mri_binarize ' + '--min 0.1 ' + '--i ' + roiname + ' ' + '--o ' + roiname)
             print(cmdstr)
@@ -73,7 +76,10 @@ def segHCP():
             cmdstr = str('mri_extract_label ' + diloption[x] + ' ' + args.hcp + ' ' +
                 str(index[i]) + ' ' + roiname)
             print(cmdstr)
-            sp.call(cmdstr, shell=True)
+            a = sp.call(cmdstr, shell=True)
+            if a == 1:
+                os.remove(roiname)
+                continue
             # binarize the ROIs
             cmdstr = str('mri_binarize ' + '--min 0.1 ' + '--i ' + roiname + ' ' + '--o ' + roiname)
             print(cmdstr)
@@ -98,7 +104,10 @@ def segBensonVarea():
             cmdstr = str('mri_extract_label ' + diloption[i] + args.benV + ' ' + 
                 str(index) + ' ' + roiname )
             print(cmdstr)
-            sp.call(cmdstr, shell=True) 
+            a = sp.call(cmdstr, shell=True)
+            if a == 1:
+                os.remove(roiname)
+                continue
             # mask left and right hemisphere
             # extract the left
             head_tail = os.path.split(roiname)
@@ -130,7 +139,10 @@ def segCB():
             roiname = os.path.join(head, 'ROIs', str('17Networks_' + str(index) + dilstr[i] + '.nii.gz'))
             cmdstr = str('mri_extract_label ' + args.cb + ' ' + str(index) + ' ' + roiname )
             print(cmdstr)    
-            sp.call(cmdstr, shell = True)
+            a = sp.call(cmdstr, shell=True)
+            if a == 1:
+                os.remove(roiname)
+                continue
             
             # mask left and right hemisphere
             # extract the left
@@ -170,8 +182,10 @@ def segAparc2009():
             cmdstr = str('mri_extract_label -exit_none_found ' + diloption[x] + args.aparc2009 + ' ' + 
                 str(index[i]) + ' ' + roiname )
             print(cmdstr)
-            sp.call(cmdstr, shell=True)
-            # extrac nuclei and dilate 1 time
+            a = sp.call(cmdstr, shell=True)
+            if a == 1:
+                os.remove(roiname)
+                continue
             
             cmdstr = str('mri_binarize ' + '--min 0.1 ' + '--i ' + roiname + 
                         ' --o ' + roiname) 
@@ -196,7 +210,10 @@ def segBrainstem():
         cmdstr = str('mri_extract_label -exit_none_found ' + args.bs + ' ' + 
                 str(index[i]) + ' ' + roiname )
         print(cmdstr)
-        sp.call(cmdstr, shell=True)
+        a = sp.call(cmdstr, shell=True)
+        if a == 1:
+            os.remove(roiname)
+            continue
         cmdstr = str('mri_binarize ' + '--min 0.1 ' + '--i ' + roiname + 
                     ' --o ' + roiname) 
         print(cmdstr)
@@ -222,7 +239,10 @@ def segHippAmy():
         cmdstr = str('mri_extract_label -exit_none_found ' + args.hipp + 'lh.hippoAmygLabels-T1.FSvoxelSpace.nii.gz' + ' ' + 
                 str(index[i]) + ' ' + roiname )
         print(cmdstr)
-        sp.call(cmdstr, shell=True)
+        a = sp.call(cmdstr, shell=True)
+        if a == 1:
+            os.remove(roiname)
+            continue
         cmdstr = str('mri_binarize ' + '--min 0.1 ' + '--i ' + roiname + 
                     ' --o ' + roiname) 
         print(cmdstr)
