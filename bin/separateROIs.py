@@ -214,6 +214,9 @@ def segHippAmy():
     label  = [str(s.split()[1]) for s in cleanLUT if (211<=int(s.split()[0]) and int(s.split()[0])<=246 ) or (7001<=int(s.split()[0]) and int(s.split()[0])<=7101) or int(s.split()[0])==203 ]
 
     for i in range(len(index)):
+        # skip whole Amygdala
+        if index[i]==218:
+            continue
         #  extract from Left hemi
         roiname = os.path.join(args.hipp, 'ROIs', str('Left-' + label[i] + '.nii.gz'))
         cmdstr = str('mri_extract_label -exit_none_found ' + args.hipp + 'lh.hippoAmygLabels-T1.FSvoxelSpace.nii.gz' + ' ' + 
