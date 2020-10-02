@@ -49,7 +49,8 @@ def segThalamus():
             print(cmdstr) 
             a = sp.call(cmdstr, shell=True)
             if a == 1:
-                os.remove(roiname)
+                if os.path.exists(roiname):
+                    os.remove(roiname)
                 continue
             # binarize the ROIs
             cmdstr = str('mri_binarize ' + '--min 0.1 ' + '--i ' + roiname + ' ' + '--o ' + roiname)
@@ -78,7 +79,8 @@ def segHCP():
             print(cmdstr)
             a = sp.call(cmdstr, shell=True)
             if a == 1:
-                os.remove(roiname)
+                if os.path.exists(roiname):
+                    os.remove(roiname)
                 continue
             # binarize the ROIs
             cmdstr = str('mri_binarize ' + '--min 0.1 ' + '--i ' + roiname + ' ' + '--o ' + roiname)
@@ -106,7 +108,8 @@ def segBensonVarea():
             print(cmdstr)
             a = sp.call(cmdstr, shell=True)
             if a == 1:
-                os.remove(roiname)
+                if os.path.exists(roiname):
+                    os.remove(roiname)
                 continue
             # mask left and right hemisphere
             # extract the left
@@ -141,7 +144,8 @@ def segCB():
             print(cmdstr)    
             a = sp.call(cmdstr, shell=True)
             if a == 1:
-                os.remove(roiname)
+                if os.path.exists(roiname):
+                    os.remove(roiname)
                 continue
             
             # mask left and right hemisphere
@@ -184,7 +188,8 @@ def segAparc2009():
             print(cmdstr)
             a = sp.call(cmdstr, shell=True)
             if a == 1:
-                os.remove(roiname)
+                if os.path.exists(roiname):
+                    os.remove(roiname)
                 continue
             
             cmdstr = str('mri_binarize ' + '--min 0.1 ' + '--i ' + roiname + 
@@ -212,8 +217,10 @@ def segBrainstem():
         print(cmdstr)
         a = sp.call(cmdstr, shell=True)
         if a == 1:
-            os.remove(roiname)
+            if os.path.exists(roiname):
+                os.remove(roiname)
             continue
+            
         cmdstr = str('mri_binarize ' + '--min 0.1 ' + '--i ' + roiname + 
                     ' --o ' + roiname) 
         print(cmdstr)
@@ -241,7 +248,8 @@ def segHippAmy():
         print(cmdstr)
         a = sp.call(cmdstr, shell=True)
         if a == 1:
-            os.remove(roiname)
+            if os.path.exists(roiname):
+                os.remove(roiname)
             continue
         cmdstr = str('mri_binarize ' + '--min 0.1 ' + '--i ' + roiname + 
                     ' --o ' + roiname) 
