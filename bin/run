@@ -22,6 +22,8 @@ despacer () {
 ###############################################################################
 # Configure Freesurfer and MCR ENV
 
+export MCR_CACHE_FOLDER_NAME=.mcrCache9.5
+
 export OS=Linux
 export FS_OVERRIDE=0
 export FIX_VERTEX_AREA=
@@ -564,10 +566,14 @@ echo -e "$CONTAINER  Compressing final outputs..."
 chmod -R 777 ${WORK_DIR}
 cd ${OUTPUT_DIR}
 zip -r /${OUTPUT_DIR}/${GEAR}_"${SUBJECT_ID}"`date +"_D%m-%d-%yT%H-%M"`.zip "${SUBJECT_ID}"
+rm -rf $OUTPUT_DIR/$SUBJECT_ID
 
 # Now compress the FS_DIR that will be input to the rtp_pipeline
 zip -r fs.zip fs
+rm -rf $OUTPUT_DIR/fs
 
+# Delete the tmp MCR folder, it breaks FW and wastes space
+rm -rf $OUTPUT_DIR/$MCR_CACHE_FOLDER_NAME
 
 ###############################################################################
 # FINISH
