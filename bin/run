@@ -22,7 +22,7 @@ despacer () {
 ###############################################################################
 # Configure Freesurfer and MCR ENV
 
-export MCR_CACHE_FOLDER_NAME=.mcrCache9.5
+export MCR_CACHE_FOLDER_NAME=.mcrCache8.4
 
 export OS=Linux
 export FS_OVERRIDE=0
@@ -63,7 +63,7 @@ export MCR_CACHE_ROOT=${OUTPUT_DIR}
 
 export SUBJECTS_DIR=${OUTPUT_DIR}
 
-cp -r $FREESURFER_HOME/subjects/fsaverage_sym $SUBJECTS_DIR/
+# cp -r $FREESURFER_HOME/subjects/fsaverage_sym $SUBJECTS_DIR/
 
 
 ###############################################################################
@@ -346,10 +346,10 @@ if [[ $REGISTER_SURFACES == "True" ]]; then
   xhemireg --s "${SUBJECT_ID}"
 
   # Register the left hemisphere to fsaverage_sym
-  surfreg --s "${SUBJECT_ID}" --t fsaverage_sym --lh
+  # surfreg --s "${SUBJECT_ID}" --t fsaverage_sym --lh
 
   # Register the inverted right hemisphere to fsaverage_sym
-  surfreg --s "${SUBJECT_ID}" --t fsaverage_sym --lh --xhemi
+  # surfreg --s "${SUBJECT_ID}" --t fsaverage_sym --lh --xhemi
 fi
 
 
@@ -431,7 +431,6 @@ if [[ $CONVERT_VOLUMES == "True" ]]; then
     mri_convert -i "${MRI_DIR}"/$i -o ${OUTPUT_DIR}/`basename $i .mgz`.nii.gz
     mri_convert -i "${MRI_DIR}"/$i -o ${FS_DIR}/`basename $i .mgz`.nii.gz
   done
-  cp "${MRI_DIR}"/ThalamicNuclei.v12.T1.FSvoxelSpace.fixed_FRAC_0.6.nii.gz "${OUTPUT_DIR}"/ThalamicNuclei.v12.T1.FSvoxelSpace.fixed_FRAC_0.6.nii.gz
 fi
 
 ##############################################################################
@@ -450,6 +449,7 @@ fi
 if [[ ${THALAMUS} == "True" ]]; then
     # separate nuclei from the ThalamicNuclei.T1.FSvoxelSpace.nii.gz
     # separate ROIs
+    cp "${MRI_DIR}"/ThalamicNuclei.v12.T1.FSvoxelSpace.fixed_FRAC_0.6.nii.gz "${OUTPUT_DIR}"/ThalamicNuclei.v12.T1.FSvoxelSpace.fixed_FRAC_0.6.nii.gz
     cp ${OUTPUT_DIR}/ThalamicNuclei.v12.T1.FSvoxelSpace.fixed_FRAC_0.6.nii.gz ${FS_DIR}/ThalamicNuclei.v12.T1.FSvoxelSpace.fixed_FRAC_0.6.nii.gz
     ${FLYWHEEL_BASE}/separateROIs.py -ThN ${FS_DIR}/ThalamicNuclei.v12.T1.FSvoxelSpace.fixed_FRAC_0.6.nii.gz \
                                      -ThLUT ${TEMPLATES}/FreesurferColorLUT_THALAMUS.txt 
